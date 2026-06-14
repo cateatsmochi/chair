@@ -1,0 +1,52 @@
+
+export type MaterialType = 'oak' | 'steel' | 'glass' | 'chrome' | 'marble';
+
+export interface TableConfig {
+  width: number; // in cm
+  depth: number; // in cm
+  height: number; // in cm
+  legTaper: number; // in cm (tilt)
+  topThickness: number; // in mm
+  frameDepth: number; // in mm
+  frameInwardOffset: number; // in mm
+  frameThickness: number; // in mm
+  legTopSize: number; // in mm
+  legBottomSize: number; // in mm
+  legInnerDepth: number; // in mm
+  material: MaterialType;
+  color: string;
+  chairId?: string | null;
+  chairCount?: number;
+  chairMaterial?: 'titanium' | 'wood' | 'fabric';
+  woodGrain?: 'walnut' | 'cherry' | 'ash' | 'oak';
+  chairBackrestAngle?: number;
+  chairHasArmrest?: boolean;
+  showTable?: boolean;
+  enableChairTexture?: boolean;
+  chairTextureComplex?: number;
+}
+
+export const DEFAULT_CONFIG: TableConfig = {
+  width: 180,
+  depth: 90,
+  height: 75,
+  legTaper: 5,
+  topThickness: 25,
+  frameDepth: 40,
+  frameInwardOffset: 100,
+  frameThickness: 100, // Validated: >= legTopSize
+  legTopSize: 80,
+  legBottomSize: 40,
+  legInnerDepth: 20, // Validated: (thickness + innerDepth) > legTopSize + 5
+  material: 'glass',
+  color: '#ffffff',
+  chairId: null,
+  chairCount: 0,
+  chairMaterial: 'titanium',
+  woodGrain: 'walnut',
+  chairBackrestAngle: 0,
+  chairHasArmrest: false,
+  showTable: true,
+  enableChairTexture: false,
+  chairTextureComplex: 5
+};

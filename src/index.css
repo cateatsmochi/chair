@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700;900&display=swap');
+
+:root {
+  color-scheme: light !important;
+}
+
+html, body {
+  background-color: #f9f9f9 !important;
+  color: #000000 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Force light mode colors for text that MUST be white on black background */
+.force-white-text {
+  color: #ffffff !important;
+}
+
+.force-black-text {
+  color: #000000 !important;
+}
+
+@theme {
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 1px !important;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #000 !important;
+    border-radius: 0 !important;
+  }
+  &::-webkit-scrollbar-button {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+  }
+  scrollbar-width: thin;
+  scrollbar-color: #000 transparent;
+}
