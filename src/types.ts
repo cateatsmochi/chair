@@ -22,8 +22,6 @@ export interface TableConfig {
   chairBackrestAngle?: number;
   chairHasArmrest?: boolean;
   showTable?: boolean;
-  enableChairTexture?: boolean;
-  chairTextureComplex?: number;
 }
 
 export const DEFAULT_CONFIG: TableConfig = {
@@ -40,13 +38,11 @@ export const DEFAULT_CONFIG: TableConfig = {
   legInnerDepth: 20, // Validated: (thickness + innerDepth) > legTopSize + 5
   material: 'glass',
   color: '#ffffff',
-  chairId: null,
-  chairCount: 0,
+  chairId: 'CY-A1',
+  chairCount: 1,
   chairMaterial: 'titanium',
   woodGrain: 'walnut',
   chairBackrestAngle: 0,
   chairHasArmrest: false,
-  showTable: true,
-  enableChairTexture: false,
-  chairTextureComplex: 5
+  showTable: false
 };

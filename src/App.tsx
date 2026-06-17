@@ -15,7 +15,6 @@ import { twMerge } from 'tailwind-merge';
 import { Scene, SceneHandle } from './components/Scene';
 import { BlueprintTable } from './components/BlueprintTable';
 import { WelcomeScreen, ReadyMadeGallery } from './components/WelcomeScreen';
-import { ChairSelector } from './components/ChairSelector';
 import { ChairShowroomModal } from './components/ChairShowroomModal';
 import { TableConfig, DEFAULT_CONFIG, MaterialType } from './types';
 import { processChatCommand } from './services/geminiService';
@@ -291,7 +290,7 @@ export default function App() {
     if (!quoteResult) return;
     
     // Save the element instantly without the delay animation
-    const nameToSave = libraryName.trim() || `TABLE_${config.material.toUpperCase()}_${config.width}x${config.depth}x${config.height}`;
+    const nameToSave = libraryName.trim() || `CHAIR_${config.chairId || 'CY-A1'}_${(config.chairMaterial || 'titanium').toUpperCase()}_${config.chairCount || 1}PCS`;
     const newItem = {
       id: Date.now().toString(),
       name: nameToSave,
@@ -341,7 +340,7 @@ export default function App() {
 
         // Trigger real file download
         const link = document.createElement('a');
-        link.download = `table-${config.width}x${config.depth}x${config.height}cm-${Date.now()}.png`;
+        link.download = `chair-${config.chairId || 'CY-A1'}-${config.chairMaterial || 'titanium'}-${Date.now()}.png`;
         link.href = quoteResult.image;
         link.click();
 
@@ -438,7 +437,7 @@ export default function App() {
 
             const blob = new Blob([buffer], { type: 'model/gltf-binary' });
             const link = document.createElement('a');
-            link.download = `model-${config.width}x${config.depth}x${config.height}cm-${Date.now()}.glb`;
+            link.download = `chair-${config.chairId || 'CY-A1'}-${config.chairMaterial || 'titanium'}-${Date.now()}.glb`;
             link.href = URL.createObjectURL(blob);
             link.click();
 
@@ -486,6 +485,7 @@ export default function App() {
   const [chatPos, setChatPos] = useState({ x: 48, y: 48 });
   const [chatSize, setChatSize] = useState({ width: 320, height: 320 });
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [showPricingLogic, setShowPricingLogic] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [dimensions, setDimensions] = useState({
@@ -1004,37 +1004,24 @@ export default function App() {
                       <div className="space-y-3">
                         <div className="space-y-0.5">
                           <span className="text-[8px] font-mono text-gray-400 uppercase block">Config ID</span>
-                          <p className="text-[10px] font-mono font-bold">#TBL-{Math.random().toString(36).substr(2, 6).toUpperCase()}</p>
+                          <p className="text-[10px] font-mono font-bold">#CHR-{Math.random().toString(36).substr(2, 6).toUpperCase()}</p>
                         </div>
                         <div className="space-y-0.5">
                           <span className="text-[8px] font-mono text-gray-400 uppercase block">Specs & Physics / 细节参数</span>
                           <div className="grid grid-cols-1 gap-0.5 text-[9px] font-bold uppercase leading-tight font-mono text-black">
-                            <span>DIM / 尺寸: {config.width}x{config.depth}x{config.height} cm</span>
-                            <span>WT / 重量: {calculateWeight(config)}</span>
-                            <span>MAT / 材质: {config.material.toUpperCase()}</span>
-                            <span>LEG / 脚型: {config.legInnerDepth > 0 ? 'Pentagon (五边斜腿)' : 'Quad (直角方腿)'}</span>
-                            {config.chairId && config.chairCount && config.chairCount > 0 && (
-                              <span className="text-[#8b5e3c]">PAIR / 双配: {config.chairId} ({config.chairCount}把)</span>
-                            )}
+                            <span>CHAIR / 型号: {config.chairId || 'CY-A1'}</span>
+                            <span>QTY / 数量: {config.chairCount}把</span>
+                            <span>MAT / 材质: {config.chairMaterial === 'titanium' ? '钛合金 (TITANIUM)' : config.chairMaterial === 'wood' ? '科技木 (WOOD GRAIN)' : '科技布 (FABRIC)'}</span>
+                            <span>ARMREST / 扶手: {config.chairHasArmrest ? 'Added (有扶手)' : 'None (无扶手)'}</span>
                           </div>
                         </div>
                         <div className="space-y-0.5">
                           <span className="text-[8px] font-mono text-gray-400 uppercase block">Tuning Data / 调参数据</span>
                           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[8px] font-mono leading-tight text-gray-600 border border-gray-200 bg-gray-50 p-1.5 rounded-sm">
-                            <div>TOP_THICK: {config.topThickness} mm</div>
-                            <div>LEG_TAPER: {config.legTaper} cm</div>
-                            <div>FRAME_DEPTH: {config.frameDepth} mm</div>
-                            <div>FRAME_THICK: {config.frameThickness} mm</div>
-                            <div>LEG_BOT: {config.legBottomSize} mm</div>
-                            {config.chairId && (
-                              <>
-                                <div className="col-span-2 border-t border-dashed border-gray-200 my-0.5" />
-                                <div>CHAIR_MAT: {config.chairMaterial?.toUpperCase() || 'TITANIUM'}</div>
-                                <div>BACK_ANGLE: {config.chairBackrestAngle}°</div>
-                                <div>ARMREST: {config.chairHasArmrest ? 'YES' : 'NONE'}</div>
-                                <div>DECALS: {config.enableChairTexture ? `ON (${config.chairTextureComplex})` : 'OFF'}</div>
-                              </>
-                            )}
+                            <div>BACK_ANGLE: {config.chairBackrestAngle || 98}°</div>
+                            <div>ARMREST: {config.chairHasArmrest ? 'YES' : 'NONE'}</div>
+                            <div>DECALS: ORIGINAL</div>
+                            <div>CHAIR_MAT: {config.chairMaterial?.toUpperCase() || 'TITANIUM'}</div>
                           </div>
                         </div>
                       </div>
@@ -1099,7 +1086,7 @@ export default function App() {
                             value={libraryName}
                             disabled={isExporting || isExportingGLB}
                             onChange={(e) => setLibraryName(e.target.value)}
-                            placeholder={`e.g., DINING_TABLE_${config.width}`}
+                            placeholder={`e.g., CUSTOM_CHAIR_${config.chairId || 'CY-A1'}`}
                             className="bg-white border-2 border-gray-400 px-2 py-1 text-[9px] uppercase font-mono tracking-wider focus:outline-none focus:border-black shadow-[inset_-1px_-1px_0px_0px_#ffffff,inset_1px_1px_0px_0px_#808080] disabled:bg-gray-100 disabled:text-gray-400"
                           />
                           <button 
@@ -1153,14 +1140,10 @@ export default function App() {
                               <div>
                                 <h4 className="text-[10px] font-bold truncate uppercase tracking-wider text-black line-clamp-1">{item.name}</h4>
                                 <div className="text-[8px] text-gray-500 font-mono leading-relaxed mt-0.5">
-                                  SIZE: {item.config.width}x{item.config.depth}x{item.config.height} CM<br />
-                                  MAT: {item.config.material.toUpperCase()}<br />
-                                  LEG: {item.config.legInnerDepth > 0 ? "PENTAGON" : "QUAD"}
-                                  {item.config.chairId && item.config.chairCount && item.config.chairCount > 0 && (
-                                    <>
-                                      <br />PAIR: {item.config.chairId} * {item.config.chairCount}
-                                    </>
-                                  )}
+                                  MODEL: {item.config.chairId || 'CY-A1'}<br />
+                                  MAT: {(item.config.chairMaterial || 'titanium').toUpperCase()}<br />
+                                  ARMREST: {item.config.chairHasArmrest ? "YES" : "NONE"}<br />
+                                  QTY: {item.config.chairCount || 1} PCS
                                 </div>
                               </div>
                               <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-dashed border-gray-100">
@@ -1250,10 +1233,10 @@ export default function App() {
           )}>
             <ToolbarButton active icon={<MousePointer2 size={isMobile ? 12 : 14} />} title="Interact Mode (交互模式)" />
             <ToolbarButton 
-              active={!isMinimized} 
+              active={showChat} 
               icon={<MessageSquare size={isMobile ? 12 : 14} />} 
-              title={isMinimized ? "Open AI Chat (打开AI对话)" : "Minimize AI Chat (收起AI对话)"} 
-              onClick={() => setIsMinimized(prev => !prev)} 
+              title={showChat ? "Close AI Chat (关闭AI对话)" : "Open AI Chat (打开AI对话)"} 
+              onClick={() => setShowChat(prev => !prev)} 
             />
             <ToolbarButton 
               icon={<Library size={isMobile ? 12 : 14} />} 
@@ -1337,7 +1320,7 @@ export default function App() {
                     <span className="w-1.5 h-1.5 bg-zinc-600 animate-ping rounded-full" />
                     <span>ENGINE_STATUS: GROWING_GEOMETRY</span>
                   </div>
-                  <div>SYS_LNK: MOD_#{config.material.toUpperCase()}_{config.width}x{config.depth}</div>
+                  <div>SYS_LNK: CHAIR_#{(config.chairId || 'CY-A1')}_{(config.chairMaterial || 'titanium').toUpperCase()}</div>
                 </div>
 
                 {/* Visual Blueprint Reticle Outline */}
@@ -1365,24 +1348,24 @@ export default function App() {
                   {/* Overlay live measurements */}
                   <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 bg-[#e6e6e6]/95 border border-black/40 p-2 shadow-[2px_2px_0px_rgba(0,0,0,0.15)] text-[8px] font-bold text-black z-20 space-y-0.5 pointer-events-none uppercase tracking-wider font-mono min-w-[125px]">
                     <div className="text-gray-500 border-b border-gray-300 pb-0.5 mb-1 flex justify-between">
-                      <span>DIMENSIONS</span>
+                      <span>CHAIR SPECS</span>
                       <span>PARM:OK</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>WIDTH (X):</span> 
-                      <span className="text-[#8c6239]">{config.width} cm</span>
+                      <span>MODEL ID:</span> 
+                      <span className="text-[#8c6239]">{config.chairId || 'CY-A1'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>DEPTH (Y):</span> 
-                      <span className="text-[#8c6239]">{config.depth} cm</span>
+                      <span>MATERIAL:</span> 
+                      <span className="text-[#8c6239]">{config.chairMaterial === 'titanium' ? '钛合金 (TITANIUM)' : config.chairMaterial === 'wood' ? '科技木 (WOOD_GRAIN)' : '科技布 (FABRIC)'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>HEIGHT (Z):</span> 
-                      <span className="text-[#8c6239]">{config.height} cm</span>
+                      <span>ARMRESTS:</span> 
+                      <span className="text-[#8c6239]">{config.chairHasArmrest ? 'ADDED' : 'NONE'}</span>
                     </div>
                     <div className="flex justify-between pt-0.5 border-t border-dashed border-gray-300">
                       <span>EST. WEIGHT:</span> 
-                      <span>{(config.width * config.depth * 0.007).toFixed(1)} kg</span>
+                      <span>{config.chairHasArmrest ? '14.5 kg' : '12.5 kg'}</span>
                     </div>
                   </div>
                 </div>
@@ -1416,7 +1399,7 @@ export default function App() {
           </AnimatePresence>
 
           {/* Floating Chat Window (only rendered when not portrait) */}
-          {!isPortrait && (
+          {!isPortrait && showChat && (
             <div 
               ref={chatRef}
               style={{ 
@@ -1445,8 +1428,16 @@ export default function App() {
                   <button 
                     onClick={() => setIsMinimized(!isMinimized)}
                     className="bg-[#c6c6c6] text-black h-4 px-1 flex items-center justify-center shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] hover:bg-white"
+                    title="Minimize"
                   >
                     {isMinimized ? <Maximize2 size={10} /> : <Minus size={10} />}
+                  </button>
+                  <button 
+                    onClick={() => setShowChat(false)}
+                    className="bg-[#c6c6c6] text-black h-4 px-1 flex items-center justify-center shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] hover:bg-red-500 hover:text-white"
+                    title="Close"
+                  >
+                    <X size={10} />
                   </button>
                 </div>
               </div>
@@ -1506,7 +1497,7 @@ export default function App() {
           )}
 
           {/* Portrait / Vertical Mode Popover Chat Window */}
-          {isPortrait && !isMinimized && (
+          {isPortrait && showChat && (
             <div 
               ref={chatRef}
               style={{ 
@@ -1523,7 +1514,7 @@ export default function App() {
                   <span className="text-[9px] font-bold tracking-widest uppercase font-mono force-white-text">AI_SYSTEM.EXE</span>
                 </div>
                 <button 
-                  onClick={() => setIsMinimized(true)}
+                  onClick={() => setShowChat(false)}
                   className="bg-[#c6c6c6] text-black h-3.5 w-3.5 flex items-center justify-center shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] hover:bg-white text-[8px]"
                 >
                   <X size={8} />
@@ -1692,9 +1683,6 @@ export default function App() {
                     }
                   }
                   
-                  let chairDecalAddon = (chairMat === 'titanium' && config.enableChairTexture);
-                  if (chairDecalAddon) singleChairCost += 1000;
-                  
                   let chairsCost = 0;
                   const hasChairs = !!(config.chairId && config.chairCount && config.chairCount > 0);
                   if (hasChairs) {
@@ -1757,12 +1745,6 @@ export default function App() {
                                 {chairColorAddon && (
                                   <div className="flex justify-between text-gray-500">
                                     <span>Anodized Shimmer Custom Color / 钛金电镀定制色:</span>
-                                    <span className="font-bold text-black">+¥1,000</span>
-                                  </div>
-                                )}
-                                {chairDecalAddon && (
-                                  <div className="flex justify-between text-gray-500">
-                                    <span>Nano Decal Finish / 引入微纳米科技贴面:</span>
                                     <span className="font-bold text-black">+¥1,000</span>
                                   </div>
                                 )}
@@ -1861,12 +1843,6 @@ export default function App() {
                                       <span className="text-black font-sans font-bold">+¥1,000</span>
                                     </div>
                                   )}
-                                  {chairDecalAddon && (
-                                    <div className="flex justify-between text-[8px] text-gray-400 leading-tight pl-2">
-                                      <span>- Nano Decal Matrix Overlay:</span>
-                                      <span className="text-black font-sans font-bold">+¥1,000</span>
-                                    </div>
-                                  )}
                                   <div className="border-t border-dotted border-gray-200 pt-1 flex justify-between font-bold text-[8.5px] text-gray-700">
                                     <span>Single Chair Fee / 单椅结算:</span>
                                     <span className="font-sans font-black">¥{singleChairCost.toLocaleString()}</span>
@@ -1953,8 +1929,7 @@ export default function App() {
           </div>
 
           <div ref={inspectorScrollRef} className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-            {config.chairId ? (
-              <>
+            <>
                 {/* 1. Material-Specific Options Picker */}
                 {(!config.chairMaterial || config.chairMaterial === 'titanium') ? (
                   <div className="space-y-3">
@@ -2016,50 +1991,6 @@ export default function App() {
                       })}
                     </div>
 
-                    {/* 钛合金专属个性纯色贴面定制 (Change Solid Panels under Titanium) */}
-                    <div className="pt-2 border-t border-dashed border-zinc-250 mt-4">
-                      <div className="flex justify-between items-center mb-1.5 px-1">
-                        <span className="text-[10px] md:text-xs font-black tracking-wider uppercase text-zinc-900">
-                          原装磨砂碳黑贴面 / MATTE BLACK DECAL OVERLAYS
-                        </span>
-                        <span className="text-[8px] md:text-[99px] font-mono text-zinc-400 font-bold uppercase">
-                          {config.enableChairTexture ? "ON" : "OFF"}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          pushToHistory(config);
-                          updateParam('enableChairTexture', !config.enableChairTexture);
-                        }}
-                        className={cn(
-                          "w-full py-1.5 md:py-2 px-3 text-[10px] md:text-xs font-black transition-all active:scale-98 border relative flex items-center justify-center gap-2",
-                          config.enableChairTexture
-                            ? "bg-black text-white border-black shadow-[2px_2px_0px_rgba(0,0,0,0.25)] scale-[1.01] z-10"
-                            : "bg-white text-zinc-900 border-zinc-250 hover:border-black shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
-                        )}
-                      >
-                        {config.enableChairTexture && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />}
-                        <span>{config.enableChairTexture ? "关闭原装个性贴面 (Disable Decals)" : "开启原装个性贴面 (Enable Decals)"}</span>
-                      </button>
-                    </div>
-
-                    {/* 开启后才出现滑轨 (Click reveals slider) */}
-                    {config.enableChairTexture && (
-                      <div className="mt-4 pt-1">
-                        <InspectorSlider
-                          label="贴面数量与覆盖度 / PROFILE DENSITY"
-                          unit=""
-                          value={config.chairTextureComplex ?? 5}
-                          min={1}
-                          max={10}
-                          axis="Density"
-                          isMobile={isMobile}
-                          onChange={(v) => updateParam('chairTextureComplex', v)}
-                          onDragStart={() => pushToHistory(config)}
-                        />
-                      </div>
-                    )}
                   </div>
                 ) : config.chairMaterial === 'fabric' ? (
                   <div className="space-y-3">
@@ -2264,212 +2195,24 @@ export default function App() {
                   </div>
                 </div>
               </>
-            ) : (
-              <>
-                <InspectorSlider 
-                  label="WIDTH" 
-                  unit="CM" 
-                  value={config.width} 
-                  min={100} 
-                  max={300} 
-                  axis="X-Axis"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('width', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="DEPTH" 
-                  unit="CM" 
-                  value={config.depth} 
-                  min={60} 
-                  max={150} 
-                  axis="Y-Axis"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('depth', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="HEIGHT" 
-                  unit="CM" 
-                  value={config.height} 
-                  min={50} 
-                  max={110} 
-                  axis="Z-Axis"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('height', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="LEG TAPER" 
-                  unit="CM" 
-                  value={config.legTaper} 
-                  min={-20} 
-                  max={20} 
-                  axis="Tilt"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('legTaper', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="TOP THICKNESS" 
-                  unit="MM" 
-                  value={config.topThickness} 
-                  min={10} 
-                  max={100} 
-                  axis="Z-Axis"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('topThickness', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="FRAME DEPTH" 
-                  unit="MM" 
-                  value={config.frameDepth} 
-                  min={20} 
-                  max={150} 
-                  axis="Y-Depth"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('frameDepth', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="FRAME INSET" 
-                  unit="MM" 
-                  value={config.frameInwardOffset} 
-                  min={0} 
-                  max={300} 
-                  axis="Inset"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('frameInwardOffset', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="FRAME THICKNESS" 
-                  unit="MM" 
-                  value={config.frameThickness} 
-                  min={20} 
-                  max={200} 
-                  axis="Width"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('frameThickness', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="LEG TOP SIZE" 
-                  unit="MM" 
-                  value={config.legTopSize} 
-                  min={20} 
-                  max={120} 
-                  axis="Top"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('legTopSize', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="LEG BOTTOM SIZE" 
-                  unit="MM" 
-                  value={config.legBottomSize} 
-                  min={10} 
-                  max={100} 
-                  axis="Bottom"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('legBottomSize', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-                <InspectorSlider 
-                  label="LEG INNER DEPTH" 
-                  unit="MM" 
-                  value={config.legInnerDepth} 
-                  min={0} 
-                  max={200} 
-                  axis="Core"
-                  isMobile={isMobile}
-                  onChange={(v) => updateParam('legInnerDepth', v)} 
-                  onDragStart={() => pushToHistory(config)}
-                />
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <label className="font-mono text-[10px] font-bold uppercase text-black">Material Color</label>
-                    <span className="text-[10px] text-gray-400 uppercase">{config.material}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {['#8B5E3C', '#333333', '#ffffff', '#c7c6c6', '#2D4F4F', '#8B0000', '#00008B', '#006400', '#FFD700', '#000000'].map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => {
-                          pushToHistory(config);
-                          updateParam('color', c);
-                        }}
-                        className={cn(
-                          "w-6 h-6 shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] border-2 transition-transform active:scale-95",
-                          config.color === c ? "border-black scale-110" : "border-transparent"
-                        )}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                    <div className="relative w-6 h-6 shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] overflow-hidden">
-                      <input 
-                        type="color" 
-                        value={config.color}
-                        onMouseDown={() => pushToHistory(config)}
-                        onTouchStart={() => pushToHistory(config)}
-                        onChange={(e) => updateParam('color', e.target.value)}
-                        className="absolute -inset-2 w-[200%] h-[200%] cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <ChairSelector
-                  selectedChairId={config.chairId || null}
-                  chairCount={config.chairCount || 0}
-                  selectedChairMaterial={config.chairMaterial || 'titanium'}
-                  onChangeMaterial={(mat) => {
-                    pushToHistory(config);
-                    updateParam('chairMaterial', mat);
-                  }}
-                  onSelectChair={(id) => {
-                    pushToHistory(config);
-                    updateParam('chairId', id);
-                    if (id) {
-                      updateParam('showTable', false);
-                    } else {
-                      updateParam('showTable', true);
-                    }
-                  }}
-                  onChangeCount={(count) => {
-                    pushToHistory(config);
-                    updateParam('chairCount', count);
-                  }}
-                  showTable={config.showTable !== false}
-                  onToggleShowTable={(show) => {
-                    pushToHistory(config);
-                    updateParam('showTable', show);
-                  }}
-                  isMobile={isMobile}
-                  onOpenShowroom={() => setShowChairShowroom(true)}
-                />
-              </>
-            )}
           </div>
           <div className={cn("mt-auto relative", isMobile ? "space-y-0" : "space-y-2")}>
             <div className={cn("flex gap-2", isMobile ? "flex-row items-stretch" : "flex-col")}>
               {/* Portrait Mode Chat Toggle Button placed to the LEFT of the Price */}
               {isPortrait && (
                 <button 
-                  onClick={() => setIsMinimized(!isMinimized)}
+                  onClick={() => setShowChat(!showChat)}
                   title="Toggle AI Chat Window"
                   className={cn(
                     "font-bold text-[9px] uppercase tracking-widest px-2.5 flex items-center justify-center gap-1 transition-all shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] border-2 border-transparent active:translate-x-[1px] active:translate-y-[1px] shrink-0",
-                    isMinimized 
-                      ? "bg-[#e8e8e8] text-black hover:bg-gray-200" 
-                      : "bg-[#000000] text-[#ffffff] force-white-text"
+                    showChat 
+                      ? "bg-[#000000] text-[#ffffff] force-white-text"
+                      : "bg-[#e8e8e8] text-black hover:bg-gray-200" 
                   )}
                 >
                   <MessageSquare size={12} />
                   <span>AI_CHAT</span>
-                  <span className={cn("w-1.5 h-1.5 rounded-full", isMinimized ? "bg-[#808080]" : "bg-[#22c55e] animate-pulse")} />
+                  <span className={cn("w-1.5 h-1.5 rounded-full", showChat ? "bg-[#22c55e] animate-pulse" : "bg-[#808080]")} />
                 </button>
               )}
 
@@ -2525,8 +2268,6 @@ export default function App() {
                         chairMaterial: 'titanium',
                         color: config.showTable ? DEFAULT_CONFIG.color : '#original',
                         showTable: config.showTable !== false,
-                        enableChairTexture: false,
-                        chairTextureComplex: 5,
                         chairBackrestAngle: 0,
                         chairHasArmrest: false,
                       }));
@@ -2565,13 +2306,12 @@ export default function App() {
             <span className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.8)]"></span>
             SYSTEM_STATUS: READY
           </span>
-          <span className="text-gray-400 ml-4">|</span>
-          <span className="ml-4">OBJECT: TABLE_04_MIN</span>
+          <span>|</span>
+          <span className="ml-4">OBJECT: CHAIR_{config.chairId || 'CY-A1'}</span>
         </div>
-        <div className="flex h-full">
-          <div className="px-4 border-l border-gray-400 flex items-center">X: {config.width.toFixed(2)}</div>
-          <div className="px-4 border-l border-gray-400 flex items-center">Y: {config.depth.toFixed(2)}</div>
-          <div className="px-4 border-l border-gray-400 flex items-center">Z: {config.height.toFixed(2)}</div>
+        <div className="flex h-full text-black">
+          <div className="px-4 border-l border-gray-400 flex items-center text-zinc-900">ANGLE: {config.chairBackrestAngle || 98}°</div>
+          <div className="px-4 border-l border-gray-400 flex items-center text-zinc-900">MAT: {(config.chairMaterial || 'titanium').toUpperCase()}</div>
           <div className="px-4 border-l border-gray-400 bg-[#000000] text-[#ffffff] force-white-text flex items-center">USER_ADMIN</div>
         </div>
       </footer>

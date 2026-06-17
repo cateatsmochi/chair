@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { X, RotateCcw, Box, AlertCircle, Info, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TableConfig } from '../types';
+import { isOriginalVeneerMaterial, desaturateTexture } from './Chair3D';
 
 interface ModelPreviewModalProps {
   chairId: string;
@@ -98,27 +99,46 @@ function IsolatedChair({ chairId }: { chairId: string }) {
           mesh.castShadow = true;
           mesh.receiveShadow = true;
 
-          // Strip prebaked textures and apply standard clean high-gloss metal material look
-          if (mesh.material) {
-            const cleanMaterial = (mat: any) => {
-              if (mat instanceof THREE.MeshStandardMaterial) {
-                const newMat = mat.clone();
-                newMat.map = null;
-                newMat.roughnessMap = null;
-                newMat.normalMap = null;
-                newMat.aoMap = null;
-                newMat.roughness = 0.05;
-                newMat.metalness = 1.0;
-                newMat.needsUpdate = true;
-                return newMat;
+          // Apply beautiful smooth sandblasted matte titanium finish to the model preview
+          const cloneAndModifyMaterial = (originalMat: any) => {
+            if (!originalMat) return originalMat;
+            const mat = originalMat.clone() as any;
+            const isModelWithBakedTexture = chairNumber === 1 || chairNumber === 2 || chairNumber === 3 || chairNumber === 7;
+            if (isModelWithBakedTexture) {
+              if (chairNumber === 1 && mat.map) {
+                mat.map = desaturateTexture(mat.map);
               }
-              return mat;
-            };
-
-            if (Array.isArray(mesh.material)) {
-              mesh.material = mesh.material.map(cleanMaterial);
+              if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
+              if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
+              if (mat.color && typeof mat.color.set === 'function') {
+                mat.color.set('#ffffff'); // Keep original crisp texture colors untouched! (No grey tinting of the black cushions!)
+              }
+            } else if (isOriginalVeneerMaterial(mat, mesh)) {
+              if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
+              if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
             } else {
-              mesh.material = cleanMaterial(mesh.material);
+              if (mat.roughness !== undefined) mat.roughness = 0.60;
+              if (mat.metalness !== undefined) mat.metalness = 0.88;
+              mat.map = null;
+              mat.roughnessMap = null;
+              mat.normalMap = null;
+              mat.aoMap = null;
+              if (mat.color) {
+                const c = mat.color;
+                if (c.r > 0.9 && c.g > 0.9 && c.b > 0.9) {
+                  mat.color.set('#acb3b6');
+                }
+              }
+            }
+            mat.needsUpdate = true;
+            return mat;
+          };
+
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material = mesh.material.map(cloneAndModifyMaterial);
+            } else {
+              mesh.material = cloneAndModifyMaterial(mesh.material);
             }
           }
         }
@@ -369,18 +389,22 @@ export function ModelPreviewModal({
                       />
 
                       {/* Highly curated studio light parameters to showcase exact materials from gltf files */}
-                      <Environment preset="studio" />
+                      <Environment preset="studio" environmentIntensity={0.4} />
                       
-                      <hemisphereLight intensity={0.7} color="#ffffff" groundColor="#eeddbb" />
+                      <ambientLight intensity={0.45} />
+                      <hemisphereLight intensity={0.3} color="#ffffff" groundColor="#dcdcdc" />
                       <directionalLight
-                        position={[5, 8, 5]}
-                        intensity={2.2}
+                        position={[4, 8, 5]}
+                        intensity={1.1}
                         castShadow
-                        shadow-mapSize={[1024, 1024]}
+                        shadow-mapSize={[2048, 2048]}
+                        shadow-bias={-0.0001}
                       />
                       <directionalLight
-                        position={[-4, 6, -3]}
-                        intensity={1.2}
+                        position={[-5, 6, -4]}
+                        intensity={0.4}
+                        castShadow
+                        shadow-bias={-0.0001}
                       />
 
                       <ContactShadows

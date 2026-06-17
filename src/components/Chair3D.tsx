@@ -9,12 +9,11 @@ interface Chair3DProps {
   woodGrain?: 'walnut' | 'cherry' | 'ash' | 'oak';
   chairBackrestAngle?: number;
   chairHasArmrest?: boolean;
-  enableChairTexture?: boolean;
-  chairTextureComplex?: number;
   progress?: number;
 }
 
 const ARMREST_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E6%89%B6%E6%89%8B%E6%A4%85.glb';
+const LANZI_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/lanzi1.glb';
 
 function getChairModelUrl(num: number): string {
   if (num >= 1 && num <= 7) {
@@ -23,7 +22,55 @@ function getChairModelUrl(num: number): string {
   return `https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/model${num}.glb`;
 }
 
-// Preload all 7 split model files and the armrests model to make them available instantly in background
+export function desaturateTexture(texture: THREE.Texture): THREE.Texture {
+  if (!texture || !texture.image) return texture;
+  if (texture.userData.isDesaturated) return texture;
+
+  try {
+    const img = texture.image as any;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width || img.videoWidth || 1024;
+    canvas.height = img.height || img.videoHeight || 1024;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        // Convert to grayscale using luminance
+        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      
+      const desated = new THREE.CanvasTexture(canvas);
+      desated.wrapS = texture.wrapS;
+      desated.wrapT = texture.wrapT;
+      desated.magFilter = texture.magFilter;
+      desated.minFilter = texture.minFilter;
+      desated.repeat.copy(texture.repeat);
+      desated.offset.copy(texture.offset);
+      desated.center.copy(texture.center);
+      desated.rotation = texture.rotation;
+      desated.flipY = texture.flipY;
+      desated.userData.isDesaturated = true;
+      
+      return desated;
+    }
+  } catch (err) {
+    console.warn("Failed to desaturate texture:", err);
+  }
+  return texture;
+}
+
+// Preload all 7 split model files, the armrests model, and the new model to make them available instantly in background
 for (let i = 1; i <= 7; i++) {
   try {
     useGLTF.preload(getChairModelUrl(i));
@@ -35,6 +82,11 @@ try {
   useGLTF.preload(ARMREST_MODEL_URL);
 } catch (e) {
   console.warn('Failed to preload armrest model:', e);
+}
+try {
+  useGLTF.preload(LANZI_MODEL_URL);
+} catch (e) {
+  console.warn('Failed to preload lanzi model:', e);
 }
 
 // Custom offset translation / scaling adjust parameters to align the armrests perfectly and beautifully with each of the 7 designs
@@ -441,6 +493,142 @@ const warningYellowMat = new THREE.MeshStandardMaterial({
   polygonOffsetUnits: -4,
 });
 
+export const isExplicitMetalFrame = (mat: any, mesh?: any): boolean => {
+  if (!mat) return false;
+  const m = Array.isArray(mat) ? mat[0] : mat;
+  if (!m) return false;
+
+  const matName = (m.name || '').toLowerCase();
+
+  // Model 1, 2, 3 base meshes are always treated as metal frames so their pipes/stems remain raw/colored titanium!
+  if (
+    matName === '材质.031' || // Model 1
+    matName === '材质.033' || // Model 2 frame
+    matName.includes('3.04288') // Model 3 frame
+  ) {
+    return true;
+  }
+
+  // Model 4, 5, 6, 7 frames
+  if (
+    matName.includes('material_40') || 
+    matName === '材质.027' // Model 7 frame
+  ) {
+    return true;
+  }
+
+  // Model 4, 5, 6, 7 veneer/panels
+  if (
+    matName === '材质.039' || 
+    matName === '材质.041' || 
+    matName === '材质.043' || 
+    matName === '材质.026' || // Model 7 backrest/veneer
+    matName.includes('塑胶')
+  ) {
+    return false;
+  }
+
+  return false;
+};
+
+export const isOriginalVeneerMaterial = (mat: any, mesh?: any): boolean => {
+  if (!mat) return false;
+  
+  const m = Array.isArray(mat) ? mat[0] : mat;
+  if (!m) return false;
+
+  const matName = (m.name || '').toLowerCase();
+
+  // Model 1, 2, 3 base structures are treated as frames (not veneers) so we only texture their dynamic overlays!
+  if (
+    matName === '材质.031' || // Model 1
+    matName === '材质.033' || // Model 2 frame
+    matName.includes('3.04288') // Model 3 frame
+  ) {
+    return false; // Not a veneer, represents the base frame
+  }
+
+  // Model 2, 3 native separate panels are indeed veneers!
+  if (
+    matName === '材质.034' || // Model 2 panel
+    matName === '材质.036' // Model 3 panel
+  ) {
+    return true;
+  }
+
+  // Model 4, 5, 6, 7 frames
+  if (
+    matName.includes('material_40') || 
+    matName === '材质.027' // Model 7 frame
+  ) {
+    return false;
+  }
+
+  // Model 4, 5, 6, 7 pre-separated veneer panels
+  if (
+    matName === '材质.039' || 
+    matName === '材质.041' || 
+    matName === '材质.043' || 
+    matName === '材质.026' || // Model 7 backrest/veneer
+    matName.includes('塑胶')
+  ) {
+    return true;
+  }
+
+  // Fallbacks:
+  const meshName = mesh ? (mesh.name || '').toLowerCase() : '';
+  if (
+    meshName.includes('屁股') || 
+    meshName.includes('pigu') || 
+    meshName.includes('butt') || 
+    meshName.includes('高颅顶') || 
+    meshName.includes('luding') || 
+    meshName.includes('塑胶') || 
+    meshName.includes('fushou') || 
+    meshName.includes('扶手')
+  ) {
+    return true;
+  }
+
+  if (m.color) {
+    const c = new THREE.Color(m.color);
+    const luminance = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    if (luminance < 0.25) {
+      return true;
+    }
+  }
+
+  const hasVeneerKeyword = 
+    matName.includes('veneer') || matName.includes('panel') || matName.includes('decal') ||
+    matName.includes('plate') || matName.includes('face') || matName.includes('inset') ||
+    matName.includes('tile') || matName.includes('facet') || matName.includes('pad') ||
+    matName.includes('leather') || matName.includes('plastic') || matName.includes('mian') ||
+    matName.includes('carbon') || matName.includes('black') || matName.includes('dark') ||
+    matName.includes('charcoal') || matName.includes('seat') || matName.includes('backrest') ||
+    matName.includes('cushion') || matName.includes('fabric') || matName.includes('cloth') ||
+    matName.includes('wood') || matName.includes('grain') || matName.includes('texture') ||
+    meshName.includes('veneer') || meshName.includes('panel') || meshName.includes('decal') ||
+    meshName.includes('plate') || meshName.includes('face') || meshName.includes('inset') ||
+    meshName.includes('tile') || meshName.includes('facet') || meshName.includes('pad') ||
+    meshName.includes('leather') || meshName.includes('plastic') || meshName.includes('mian') ||
+    meshName.includes('carbon') || meshName.includes('black') || meshName.includes('dark') ||
+    meshName.includes('charcoal') || meshName.includes('seat') || meshName.includes('backrest') ||
+    meshName.includes('cushion') || meshName.includes('fabric') || meshName.includes('cloth') ||
+    meshName.includes('wood') || meshName.includes('grain') || meshName.includes('texture');
+
+  if (hasVeneerKeyword) return true;
+
+  if (isExplicitMetalFrame(m, mesh)) {
+    return false;
+  }
+
+  return true;
+};
+
+export const isColorfulMaterial = (mat: any, mesh?: any): boolean => {
+  return isOriginalVeneerMaterial(mat, mesh);
+};
+
 export function Chair3D({ 
   chairId, 
   color, 
@@ -448,17 +636,22 @@ export function Chair3D({
   woodGrain = 'walnut', 
   chairBackrestAngle = 0, 
   chairHasArmrest = false,
-  enableChairTexture = false,
-  chairTextureComplex = 3,
   progress
 }: Chair3DProps) {
+  const chairTextureComplex = 5; // Fixed fallback for dynamic panels if ever generated
   // Identify index/number of the chair from its ID (e.g. "CY-A1" -> 1, "CY-A7" -> 7)
   const chairNumber = useMemo(() => {
     const num = parseInt(chairId.replace(/[^\d]/g, ''), 10);
     return isNaN(num) ? 1 : num;
   }, [chairId]);
 
-  const GLTF_URL = getChairModelUrl(chairNumber);
+  const GLTF_URL = useMemo(() => {
+    if (chairNumber === 1 && chairMaterial === 'fabric' && color?.toLowerCase() === '#ff6b6b') {
+      return LANZI_MODEL_URL;
+    }
+    return getChairModelUrl(chairNumber);
+  }, [chairNumber, chairMaterial, color]);
+
   const { scene } = useGLTF(GLTF_URL);
   const { scene: armrestScene } = useGLTF(ARMREST_MODEL_URL);
 
@@ -591,31 +784,35 @@ export function Chair3D({
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
-        // Save original material reference on first pass
+        // Save original material reference on first pass (completely pristine and untouched from GLTF)
         if (!mesh.userData.originalMaterial) {
-          if (Array.isArray(mesh.material)) {
-            mesh.userData.originalMaterial = mesh.material.map(m => m.clone());
-          } else {
-            mesh.userData.originalMaterial = mesh.material.clone();
-          }
-
-          const cleanMat = (mat: any) => {
-            if (mat instanceof THREE.MeshStandardMaterial) {
-              mat.map = null;
-              mat.roughnessMap = null;
-              mat.normalMap = null;
-              mat.aoMap = null;
-              mat.roughness = 0.05;
-              mat.metalness = 1.0;
-              mat.needsUpdate = true;
+          const cloneMat = (m: any) => {
+            if (!m) return m;
+            const cl = m.clone();
+            if (chairNumber === 1 && GLTF_URL !== LANZI_MODEL_URL && cl.map) {
+              cl.map = desaturateTexture(cl.map);
             }
+            cl.needsUpdate = true;
+            return cl;
           };
 
-          if (Array.isArray(mesh.userData.originalMaterial)) {
-            mesh.userData.originalMaterial.forEach(cleanMat);
+          if (Array.isArray(mesh.material)) {
+            mesh.userData.originalMaterial = mesh.material.map(cloneMat);
+          } else if (mesh.material && typeof mesh.material.clone === 'function') {
+            mesh.userData.originalMaterial = cloneMat(mesh.material);
           } else {
-            cleanMat(mesh.userData.originalMaterial);
+            mesh.userData.originalMaterial = mesh.material;
           }
+        }
+
+        // If this is the user's custom model (lanzi1.glb), keep its visual materials completely pristine and unaltered
+        const isArmrestMesh = mesh.name === 'chair_armrest' || mesh.name.includes('fushou') || (mesh.parent && (mesh.parent.name === 'chair_armrest' || mesh.parent.name.includes('fushou')));
+        if (GLTF_URL === LANZI_MODEL_URL && !isArmrestMesh) {
+          if (mesh.userData.originalMaterial) {
+            mesh.material = mesh.userData.originalMaterial;
+          }
+          mesh.visible = true;
+          return;
         }
 
         const getMatName = (mat: any): string => {
@@ -652,88 +849,206 @@ export function Chair3D({
         // Retrieve any existing panel overlay mesh
         const existingPanel = mesh.getObjectByName('mesh_panel_overlay') as THREE.Mesh | undefined;
 
-        // If the user disabled textures or chose wood/fabric, make sure we clean up the textured panels
-        const shouldHaveTexture = enableChairTexture && chairMaterial === 'titanium';
-        
-        if (existingPanel && (!shouldHaveTexture || existingPanel.userData.complexity !== chairTextureComplex)) {
+        // 1. Resolve dynamic overlay panel requirements for Combined Models (1, 2, 3)
+        const isCombined = chairNumber === 1;
+        const shouldHaveTexture = isCombined && (
+          chairMaterial === 'wood' || 
+          chairMaterial === 'fabric'
+        );
+
+        // Clean up or remove dynamic panel if it's no longer matching
+        const panelMaterialType = chairMaterial + '_' + (chairMaterial === 'wood' ? woodGrain : (chairMaterial === 'fabric' ? color : ''));
+        const needsRecreatePanel = existingPanel && (
+          !shouldHaveTexture || 
+          existingPanel.userData.complexity !== chairTextureComplex ||
+          existingPanel.userData.materialType !== panelMaterialType
+        );
+        if (existingPanel && needsRecreatePanel) {
           mesh.remove(existingPanel);
           if (existingPanel.geometry) {
             existingPanel.geometry.dispose();
           }
         }
 
-        // Apply selected override material to the entire chair components
-        if (chairMaterial === 'wood') {
-          mesh.material = woodMatInstances[woodGrain];
-        } else if (chairMaterial === 'fabric') {
-          mesh.material = currentFabricMat;
-        } else {
-          // Resolve base titanium color
-          let baseHex = color;
-          if (!baseHex || baseHex === '#original' || baseHex === 'original' || baseHex === '#ffffff') {
-            baseHex = '#abb4b9'; // Default silver-gray raw titanium
-          }
+        // 2. Restore pristine base material reference (from GLB) for styling
+        const clonePristine = (m: any) => {
+          if (!m) return m;
+          const cl = m.clone();
+          cl.needsUpdate = true;
+          return cl;
+        };
 
-          // Titanium default / original initial model with anodized color customization support
-          const isRawColor = !color || color === '#original' || color === 'original' || color === '#ffffff';
-          
-          if (isRawColor) {
-            mesh.material = mesh.userData.originalMaterial;
+        if (mesh.userData.originalMaterial) {
+          if (Array.isArray(mesh.userData.originalMaterial)) {
+            mesh.material = mesh.userData.originalMaterial.map(clonePristine);
           } else {
-            if (!mesh.userData.titaniumMaterial) {
-              if (Array.isArray(mesh.userData.originalMaterial)) {
-                mesh.userData.titaniumMaterial = mesh.userData.originalMaterial.map((m: any) => m.clone());
-              } else if (mesh.userData.originalMaterial && typeof mesh.userData.originalMaterial.clone === 'function') {
-                mesh.userData.titaniumMaterial = mesh.userData.originalMaterial.clone();
+            mesh.material = clonePristine(mesh.userData.originalMaterial);
+          }
+        }
+
+        const isRawColor = !color || color === '#original' || color === 'original' || color === '#ffffff';
+        let baseHex = color;
+        if (!baseHex || baseHex === '#original' || baseHex === 'original' || baseHex === '#ffffff') {
+          baseHex = '#abb4b9'; // Default lovely silver-gray titanium steel
+        }
+
+        // 3. Apply appropriate materials / styling to the base mesh
+        const isModelWithBakedTexture = chairNumber === 1 || chairNumber === 2 || chairNumber === 3 || chairNumber === 7;
+
+        if (isModelWithBakedTexture) {
+          // Model 2, 3, 7 have baked texture maps containing both the frame (silver) and cushions/veneers (black/dark).
+          // We must NOT strip their maps, and we must keep BOTH materials (backrest and base meshes) styled consistently!
+          const applyBakedModelStyles = (mat: any) => {
+            if (mat) {
+              // Ensure we do NOT clear maps! Keep original beautiful baked textures intact.
+              if (chairMaterial === 'titanium') {
+                if (isRawColor) {
+                  // Beautiful raw/natural white/silver titanium frame outline
+                  if (mat.color && typeof mat.color.set === 'function') {
+                    mat.color.set('#ffffff'); // Keep original crisp texture colors untouched! (No grey tinting of the black cushions!)
+                  }
+                } else {
+                  // Anodized colors: we can blend the color elegantly with the texture
+                  if (mat.color && typeof mat.color.set === 'function') {
+                    mat.color.set(baseHex);
+                  }
+                }
               } else {
-                mesh.userData.titaniumMaterial = mesh.userData.originalMaterial;
+                // In wood/fabric modes, we also keep the gorgeous original baked silver frame + matte black pad contrast
+                // (Otherwise, applying solid wood/fabric to a combined mesh makes the legs or frame turn into wood/fabric!)
+                if (mat.color && typeof mat.color.set === 'function') {
+                  mat.color.set('#ffffff');
+                }
+              }
+              
+              // Apply beautiful physical matte properties to make the black cushions pop
+              if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
+              if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
+              
+              mat.needsUpdate = true;
+            }
+          };
+
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(applyBakedModelStyles);
+          } else {
+            applyBakedModelStyles(mesh.material);
+          }
+        } else {
+          // Standard customization flow for Models 1, 4, 5, 6
+          const isVeneer = isOriginalVeneerMaterial(mesh.material, mesh);
+
+          if (isVeneer) {
+            // Model 1, 4-6 native veneer/panel elements
+            if (chairMaterial === 'wood') {
+              mesh.material = woodMatInstances[woodGrain];
+            } else if (chairMaterial === 'fabric') {
+              mesh.material = currentFabricMat;
+            } else {
+              // Titanium mode -> keep original beautiful high-quality dark matte / black textured cushion/panel from GLB!
+              const applyVeneerMatteStyles = (mat: any) => {
+                if (mat) {
+                  // Ensure a nice matte look, but KEEP all original maps/textures/color intact!
+                  if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
+                  if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
+                  // Do NOT set solid colors or clear maps because the GLB textures are perfect.
+                  mat.needsUpdate = true;
+                }
+              };
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(applyVeneerMatteStyles);
+              } else {
+                applyVeneerMatteStyles(mesh.material);
               }
             }
-            mesh.material = mesh.userData.titaniumMaterial;
-
-            const applyTitaniumColor = (mat: any) => {
-              if (mat && mat.color && typeof mat.color.set === 'function') {
-                mat.color.set(baseHex);
-                // Clear all texture maps
-                mat.map = null;
-                mat.roughnessMap = null;
-                mat.normalMap = null;
-                mat.aoMap = null;
+          } else {
+            // Base metal frame element
+            const applyFrameStyles = (mat: any) => {
+              if (mat) {
+                const matName = mat.name || '';
                 
-                // Ultra glossy high-polished look to contrast with flat solid matte panels from user images
-                mat.roughness = 0.05;
-                mat.metalness = 1.0;
+                if (chairMaterial === 'wood' || chairMaterial === 'fabric') {
+                  // Under Wood/Fabric mode, frame parts remain beautiful silver-gray titanium steel
+                  if (mat.color && typeof mat.color.set === 'function') {
+                    mat.color.set('#abb4b9');
+                  }
+                  mat.roughness = 0.60;
+                  mat.metalness = 0.88;
+                  mat.map = null;
+                  mat.roughnessMap = null;
+                  mat.normalMap = null;
+                  mat.aoMap = null;
+                } else {
+                  // Titanium customizable mode (raw color or anodized custom colors)
+                  if (isRawColor) {
+                    // Beautiful sandblasted titanium silver frame
+                    if (mat.color) {
+                      mat.color.set('#acb3b6');
+                    }
+                    mat.roughness = 0.60;
+                    mat.metalness = 0.88;
+                    mat.map = null;
+                    mat.roughnessMap = null;
+                    mat.normalMap = null;
+                    mat.aoMap = null;
+                  } else {
+                    // Anodized color frame
+                    if (mat.color && typeof mat.color.set === 'function') {
+                      mat.color.set(baseHex);
+                    }
+                    mat.roughness = 0.60;
+                    mat.metalness = 0.88;
+                    mat.map = null;
+                    mat.roughnessMap = null;
+                    mat.normalMap = null;
+                    mat.aoMap = null;
+                  }
+                }
                 mat.needsUpdate = true;
               }
             };
 
             if (Array.isArray(mesh.material)) {
-              mesh.material.forEach(applyTitaniumColor);
+              mesh.material.forEach(applyFrameStyles);
             } else {
-              applyTitaniumColor(mesh.material);
+              applyFrameStyles(mesh.material);
             }
           }
+        }
 
-          // Dynamically compute and attach gorgeous, inset panels above the titanium sheet structure if missing
-          if (shouldHaveTexture) {
-            const currentPanel = mesh.getObjectByName('mesh_panel_overlay');
-            if (!currentPanel) {
-              const panelGeom = createInsetPanelsGeometry(mesh.userData.originalGeometry, mesh.name, chairTextureComplex);
-              if (panelGeom) {
-                const panelMesh = new THREE.Mesh(panelGeom, [
+        // 4. For Combined Models (1, 2, 3), dynamically generate/texture the overlay panels if required
+        if (shouldHaveTexture) {
+          let currentPanel = mesh.getObjectByName('mesh_panel_overlay') as THREE.Mesh | undefined;
+          if (!currentPanel) {
+            const panelGeom = createInsetPanelsGeometry(mesh.userData.originalGeometry, mesh.name, chairTextureComplex);
+            if (panelGeom) {
+              let finalPanelMat: THREE.Material | THREE.Material[];
+              
+              if (chairMaterial === 'wood') {
+                finalPanelMat = woodMatInstances[woodGrain];
+              } else if (chairMaterial === 'fabric') {
+                finalPanelMat = currentFabricMat;
+              } else {
+                // Titanium plates matching the multitone charcoal black look
+                finalPanelMat = [
                   matteCharcoalMat,    // Index 0 (fallback)
                   matteCharcoalMat,    // Index 1 (Most common Charcoal black plate)
                   matteDarkGreyMat,    // Index 2 (Secondary dark grey)
                   matteCharcoalMat,    // Index 3 (Consistently Charcoal black plate to match original)
                   matteDarkGreyMat,    // Index 4 (Consistently zinc grey plate)
                   matteCharcoalMat     // Index 5 (Consistently Charcoal black plate)
-                ]);
-                panelMesh.name = 'mesh_panel_overlay';
-                panelMesh.userData = { complexity: chairTextureComplex };
-                panelMesh.castShadow = false;
-                panelMesh.receiveShadow = false;
-                mesh.add(panelMesh);
+                ];
               }
+              
+              currentPanel = new THREE.Mesh(panelGeom, finalPanelMat);
+              currentPanel.name = 'mesh_panel_overlay';
+              currentPanel.userData = { 
+                complexity: chairTextureComplex,
+                materialType: panelMaterialType
+              };
+              currentPanel.castShadow = false;
+              currentPanel.receiveShadow = false;
+              mesh.add(currentPanel);
             }
           }
         }
@@ -857,7 +1172,7 @@ export function Chair3D({
         }
       }
     });
-  }, [clonedScene, chairMaterial, woodGrain, chairBackrestAngle, color, enableChairTexture, chairTextureComplex, progress]);
+  }, [clonedScene, chairMaterial, woodGrain, chairBackrestAngle, color, progress]);
 
   return <primitive object={clonedScene} />;
 }

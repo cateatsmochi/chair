@@ -58,36 +58,6 @@ export function ChairSelector({
 
       {/* Grid of 7 Curated Chairs */}
       <div className="grid grid-cols-2 gap-2 max-h-[290px] overflow-y-auto pr-1 select-none custom-scrollbar pb-1">
-        {/* "None" Option to deselect */}
-        <div
-          onClick={() => {
-            onSelectChair(null);
-            onChangeCount(0);
-          }}
-          className={clsx(
-            "cursor-pointer border p-2 flex flex-col justify-between group transition-all text-left",
-            !selectedChairId
-              ? "bg-[#000000] text-[#ffffff] border-black shadow-[2px_2px_0px_rgba(0,0,0,0.15)]"
-              : "bg-white border-zinc-250 text-black hover:border-zinc-900 shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
-          )}
-        >
-          <div className="space-y-1">
-            <div className="flex justify-between items-start">
-              <span className="font-sans font-black text-[9px] tracking-wide uppercase leading-none block">
-                不配置桌椅
-              </span>
-              {!selectedChairId && <Check size={10} className="text-[#ffffff]" />}
-            </div>
-            <span className="text-[7px] opacity-60 font-mono tracking-widest leading-none block uppercase">
-              NO_PAIRING
-            </span>
-          </div>
-          <div className="pt-4 border-t border-dashed border-zinc-150 group-hover:border-zinc-300 mt-2 flex justify-between items-center">
-            <span className="text-[7px] font-mono opacity-50 font-bold">QTY: 0</span>
-            <span className="text-[10px] font-mono font-black">¥0</span>
-          </div>
-        </div>
-
         {/* The 7 Chairs */}
         {CHAIR_LIBRARY.map((item) => {
           const isSelected = selectedChairId === item.id;
@@ -206,19 +176,14 @@ export function ChairSelector({
               配置椅群数量 / QTY:
             </span>
 
-            {/* Step Selection Button (0, 1, 2, 4, 6, 8) */}
+            {/* Step Selection Button (1, 2, 4, 6, 8) */}
             <div className="flex items-center gap-1">
-              {[0, 1, 2, 4, 6, 8].map((countVal) => (
+              {[1, 2, 4, 6, 8].map((countVal) => (
                 <button
                   key={countVal}
                   type="button"
                   onClick={() => {
-                    if (countVal === 0) {
-                      onSelectChair(null);
-                      onChangeCount(0);
-                    } else {
-                      onChangeCount(countVal);
-                    }
+                    onChangeCount(countVal);
                   }}
                   className={clsx(
                     "w-6 h-6 flex items-center justify-center font-mono text-[9px] font-black border transition-all active:scale-95",
@@ -227,7 +192,7 @@ export function ChairSelector({
                       : "bg-white text-zinc-900 border-zinc-250 hover:border-black shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
                   )}
                 >
-                  {countVal === 0 ? "0" : `${countVal}`}
+                  {countVal}
                 </button>
               ))}
             </div>
@@ -261,27 +226,6 @@ export function ChairSelector({
               ))}
             </div>
           </div>
-
-          {/* Table display toggle option */}
-          {onToggleShowTable && (
-            <div className="flex justify-between items-center pt-2 border-t border-dashed border-zinc-200">
-              <span className="font-mono text-[8.5px] font-bold uppercase text-zinc-900">
-                同时显示餐桌 / Show Table:
-              </span>
-              <button
-                type="button"
-                onClick={() => onToggleShowTable(!showTable)}
-                className={clsx(
-                  "px-2 py-0.5 font-mono text-[8px] font-black border transition-all active:scale-95",
-                  showTable
-                    ? "bg-[#000000] text-white border-black"
-                    : "bg-white text-zinc-450 border-zinc-250 hover:border-black"
-                )}
-              >
-                {showTable ? "ACTIVE (显示)" : "HIDDEN (隐藏)"}
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -1,7 +1,6 @@
 
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Grid, ContactShadows } from '@react-three/drei';
-import { Table } from './Table';
 import { Chair3D } from './Chair3D';
 import { TableConfig } from '../types';
 import { Suspense, useImperativeHandle, forwardRef, useRef, useMemo } from 'react';
@@ -116,15 +115,11 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
         pCam.fov = 28;
         pCam.updateProjectionMatrix();
         
-        const isChairOnly = config.showTable === false && !!config.chairId;
+        const isChairOnly = true;
         if (isChairOnly) {
           // Front-facing perspective for chair alone ("正视角")
           camera.position.set(0, 0.52, 2.4); 
           camera.lookAt(0, 0.48, 0);
-        } else {
-          // Standard isometric view for tables
-          camera.position.set(2.6, 2.0, 2.6); 
-          camera.lookAt(0, 0.45, 0);
         }
 
         // 2. Hide GridLine (Grid helper)
@@ -166,24 +161,20 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
       <Suspense fallback={null}>
         <PerspectiveCamera 
           makeDefault 
-          position={isMobile ? [1.8, 1.8, 1.8] : [4, 4, 4]} 
+          position={isMobile ? [2.0, 1.4, 2.0] : [2.5, 1.8, 2.5]} 
           fov={isMobile ? 35 : 40} 
         />
         <OrbitControls 
           makeDefault 
           minPolarAngle={0} 
           maxPolarAngle={Math.PI / 1.75} 
-          target={[0, 0.5, 0]}
+          target={[0, 0.45, 0]}
         />
         
         <group ref={exportGroupRef}>
-          {(!config.chairId || config.showTable) && (
-            <Table config={config} progress={progress} />
-          )}
-
           {config.chairId && (
             <group 
-              position={[0, 0, config.showTable ? (config.depth / 200 + 0.32) : 0]} 
+              position={[0, 0, 0]} 
               rotation={[0, 0, 0]}
             >
               <Chair3D 
@@ -193,21 +184,19 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
                 chairBackrestAngle={config.chairBackrestAngle}
                 chairHasArmrest={config.chairHasArmrest}
                 color={config.color}
-                enableChairTexture={config.enableChairTexture}
-                chairTextureComplex={config.chairTextureComplex}
                 progress={progress}
               />
             </group>
           )}
         </group>
 
-        <Environment preset="studio" />
+        <Environment preset="studio" environmentIntensity={0.4} />
 
         <ContactShadows 
           position={[0, 0, 0]} 
-          opacity={0.6} 
+          opacity={0.5} 
           scale={15} 
-          blur={1.5} 
+          blur={1.8} 
           far={0.8} 
         />
 
@@ -223,21 +212,24 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
           position={[0, -0.001, 0]}
         />
         
-        <hemisphereLight intensity={0.7} color="#ffffff" groundColor="#eeddbb" />
+        <ambientLight intensity={0.45} />
+        <hemisphereLight intensity={0.3} color="#ffffff" groundColor="#dcdcdc" />
         <directionalLight 
-          position={[5, 10, 7]} 
-          intensity={2.2} 
+          position={[4, 8, 6]} 
+          intensity={1.1} 
           castShadow 
-          shadow-mapSize={[1024, 1024]}
+          shadow-mapSize={[2048, 2048]}
+          shadow-bias={-0.0001}
         />
         <directionalLight 
-          position={[-6, 8, -6]} 
-          intensity={1.2} 
+          position={[-5, 6, -4]} 
+          intensity={0.4} 
           castShadow
+          shadow-bias={-0.0001}
         />
         <directionalLight 
-          position={[0, 4, 8]} 
-          intensity={0.6} 
+          position={[0, 4, 6]} 
+          intensity={0.3} 
         />
       </Suspense>
     </Canvas>

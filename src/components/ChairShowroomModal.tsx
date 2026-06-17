@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { X, RotateCcw, Box, Info, Play, Pause, Grid } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CHAIR_LIBRARY } from '../data/chairs';
+import { isOriginalVeneerMaterial, desaturateTexture } from './Chair3D';
 
 interface ChairShowroomModalProps {
   onClose: () => void;
@@ -56,13 +57,54 @@ function GridChairCell({ chair, position, onSelect }: GridChairCellProps) {
     clone.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
-            // Simplified material application based on library material
-            if (chair.material === 'chrome') {
-                mesh.material = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 1.0, roughness: 0.05 });
-            } else if (chair.material === 'carbon') {
-                mesh.material = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1 });
-            } else { // Steel/Carbon/Other
-                mesh.material = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.2 });
+             const cloneAndModifyMaterial = (originalMat: any) => {
+                if (!originalMat) return originalMat;
+                const mat = originalMat.clone() as any;
+                const isModelWithBakedTexture = chairNumber === 1 || chairNumber === 2 || chairNumber === 3 || chairNumber === 7;
+                if (isModelWithBakedTexture) {
+                    if (chairNumber === 1 && mat.map) {
+                        mat.map = desaturateTexture(mat.map);
+                    }
+                    // For baked texture models: keep maps and colors intact, and apply beautiful high-contrast matte properties
+                    if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
+                    if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
+                    if (mat.color && typeof mat.color.set === 'function') {
+                        mat.color.set('#ffffff'); // Keep original crisp texture colors untouched! (No grey tinting of the black cushions!)
+                    }
+                } else if (isOriginalVeneerMaterial(mat, mesh)) {
+                    // It's a veneer panel! Keep its original beautiful textured look and maps completely untouched.
+                } else {
+                    // Clear mottled maps to ensure smooth pearl reflections as requested
+                    mat.map = null;
+                    mat.roughnessMap = null;
+                    mat.normalMap = null;
+                    mat.aoMap = null;
+
+                    // Turn frame parts to respective selected material with premium matte properties
+                    if (chair.material === 'chrome') {
+                        mat.color.set('#cccccc');
+                        mat.metalness = 1.0;
+                        mat.roughness = 0.05;
+                    } else if (chair.material === 'carbon') {
+                        mat.color.set('#333333');
+                        mat.metalness = 0.88;
+                        mat.roughness = 0.55;
+                    } else { // Steel
+                        mat.color.set('#8e9496');
+                        mat.metalness = 0.88;
+                        mat.roughness = 0.60;
+                    }
+                }
+                mat.needsUpdate = true;
+                return mat;
+            };
+
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material = mesh.material.map(cloneAndModifyMaterial);
+                } else {
+                    mesh.material = cloneAndModifyMaterial(mesh.material);
+                }
             }
         }
     });
@@ -241,21 +283,22 @@ export function ChairShowroomModal({ onClose, onSelectChair }: ChairShowroomModa
                     target={[0, 0, 0]}
                   />
 
-                  <Environment preset="studio" />
+                  <Environment preset="studio" environmentIntensity={0.4} />
                   
-                  <hemisphereLight intensity={0.8} color="#ffffff" groundColor="#dbdbdb" />
+                  <ambientLight intensity={0.45} />
+                  <hemisphereLight intensity={0.3} color="#ffffff" groundColor="#dcdcdc" />
                   
                   <directionalLight
-                    position={[10, 15, 10]}
-                    intensity={2.8}
+                    position={[8, 12, 8]}
+                    intensity={1.1}
                     castShadow
                     shadow-mapSize={[2048, 2048]}
                     shadow-bias={-0.0001}
                   />
 
                   <directionalLight
-                    position={[-10, 8, -10]}
-                    intensity={0.8}
+                    position={[-8, 6, -8]}
+                    intensity={0.4}
                     color="#f8fafc"
                   />
 

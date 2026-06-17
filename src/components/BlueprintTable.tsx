@@ -155,10 +155,6 @@ export function BlueprintTable({ config, progress }: BlueprintTableProps) {
       }
     })();
 
-    // E. Seat cover texture (decorations matching selected materials / panel overlays)
-    const hasTexture = config.enableChairTexture;
-    const txDensity = config.chairTextureComplex ?? 5; // 1 to 10 scale
-
     // Custom CAD color schematic based on material
     const isTitanium = (config.chairMaterial || 'titanium') === 'titanium';
     const fillCol = isTitanium ? 'rgba(0,0,0,0.03)' : (config.chairMaterial === 'wood' ? 'rgba(180, 137, 95, 0.12)' : 'rgba(57, 114, 184, 0.08)');
@@ -240,36 +236,7 @@ export function BlueprintTable({ config, progress }: BlueprintTableProps) {
                 strokeDasharray="2,2"
               />
 
-              {/* Decal Overlays / Solid Panels (if enabled) */}
-              {hasTexture && (
-                <g>
-                  {/* Outer Decal Border */}
-                  <polygon
-                    points={`${projSeat(-sw/2.8, -sd/2.8, sh).x},${projSeat(-sw/2.8, -sd/2.8, sh).y} ${projSeat(sw/2.8, -sd/2.8, sh).x},${projSeat(sw/2.8, -sd/2.8, sh).y} ${projSeat(sw/2.8, sd/2.8, sh).x},${projSeat(sw/2.8, sd/2.8, sh).y} ${projSeat(-sw/2.8, sd/2.8, sh).x},${projSeat(-sw/2.8, sd/2.8, sh).y}`}
-                    fill="none"
-                    stroke="#111"
-                    strokeWidth="0.85"
-                  />
-                  {/* Decal internal detailing representing density slider */}
-                  {Array.from({ length: Math.min(6, Math.max(1, Math.floor(txDensity / 2.1))) }).map((_, i) => {
-                    const offset = 4 + i * 4;
-                    const dsA = projSeat(-sw/2.8 + offset, -sd/2.8 + offset, sh);
-                    const dsB = projSeat(sw/2.8 - offset, -sd/2.8 + offset, sh);
-                    const dsC = projSeat(sw/2.8 - offset, sd/2.8 - offset, sh);
-                    const dsD = projSeat(-sw/2.8 + offset, sd/2.8 - offset, sh);
-                    return (
-                      <polygon
-                        key={i}
-                        points={`${dsA.x},${dsA.y} ${dsB.x},${dsB.y} ${dsC.x},${dsC.y} ${dsD.x},${dsD.y}`}
-                        fill="rgba(0,0,0,0.06)"
-                        stroke="#111"
-                        strokeWidth="0.5"
-                        strokeDasharray="1,1"
-                      />
-                    );
-                  })}
-                </g>
-              )}
+
             </g>
           )}
 
@@ -315,15 +282,7 @@ export function BlueprintTable({ config, progress }: BlueprintTableProps) {
                 />
               </g>
 
-              {/* Matte black decals on the backrest if enabled */}
-              {hasTexture && (
-                <polygon
-                  points={`${projBack(-sw/4, 0.2, 10).x},${projBack(-sw/4, 0.2, 10).y} ${projBack(sw/4, 0.2, 10).x},${projBack(sw/4, 0.2, 10).y} ${projBack(sw/5, 0.1, backHeight - 12).x},${projBack(sw/5, 0.1, backHeight - 12).y} ${projBack(-sw/5, 0.1, backHeight - 12).x},${projBack(-sw/5, 0.1, backHeight - 12).y}`}
-                  fill="rgba(17,17,17,0.18)"
-                  stroke="#111"
-                  strokeWidth="0.75"
-                />
-              )}
+
             </g>
           )}
 
