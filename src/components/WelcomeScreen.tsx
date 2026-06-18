@@ -4,7 +4,7 @@ import { Compass, Sparkles, ChevronRight, ArrowLeft, Package, Eye, Box } from 'l
 import { TableConfig } from '../types';
 import { ModelPreviewModal, IsolatedChair } from './ModelPreviewModal';
 import { Canvas, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
+import { PerspectiveCamera, Environment, ContactShadows, OrbitControls } from '@react-three/drei';
 // @ts-ignore
 import chairsGalleryImage from '../assets/images/chairs_gallery_biennale_1780976866968.png';
 // @ts-ignore
@@ -126,6 +126,49 @@ export function WelcomeScreen({ onEnterCustomizer, onEnterReadyMade }: WelcomeSc
       {/* Precision millimeter design grid lines matching customizer */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ececec_1px,transparent_1px),linear-gradient(to_bottom,#ececec_1px,transparent_1px)] bg-[size:20px_20px] opacity-75 pointer-events-none" />
       
+      {/* Absolute background 3D model - Right half-ish view */}
+      <div className="absolute right-0 top-0 bottom-0 w-[50%] h-full pointer-events-none select-none z-0 hidden lg:block overflow-hidden">
+        <div className="w-full h-full relative opacity-100">
+          <div className="w-full h-full transform translate-x-[5%] translate-y-[10%] scale-[1.1]">
+            <Suspense fallback={null}>
+              <Canvas
+                shadows={false}
+                gl={{ antialias: true, alpha: true }}
+                dpr={[1, 2]}
+              >
+                <PerspectiveCamera makeDefault position={[1.8, 1.1, 2.2]} fov={35} />
+                <ambientLight intensity={0.55} />
+                <hemisphereLight intensity={0.35} color="#ffffff" groundColor="#dcdcdc" />
+                <directionalLight position={[4, 8, 5]} intensity={1.2} />
+                
+                <Suspense fallback={null}>
+                  <IsolatedChair chairId="CY-A7" />
+                </Suspense>
+                
+                <Environment preset="studio" environmentIntensity={0.5} />
+                
+                <ContactShadows
+                  position={[0, 0, 0]}
+                  opacity={0.35}
+                  scale={3.5}
+                  blur={1.8}
+                  far={1.2}
+                />
+                
+                <OrbitControls
+                  enableZoom={false}
+                  enablePan={false}
+                  enableRotate={false}
+                  autoRotate={false}
+                  autoRotateSpeed={0.8}
+                  target={[0, 0.45, 0]}
+                />
+              </Canvas>
+            </Suspense>
+          </div>
+        </div>
+      </div>
+
       {/* Drafting aesthetic header */}
       <header className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 md:pt-10 flex justify-between items-center z-10 flex-shrink-0">
         <div className="flex items-center gap-2">

@@ -76,9 +76,9 @@ function getFabricGradientForColor(baseColor: string): { bgStyle: string, border
   
   // Dynamic color stops aligned with createFabricMaterialForColor in Chair3D
   const color1 = hslToHex(hsl.h, Math.max(hsl.s * 0.9, 50), Math.max(hsl.l * 0.5, 15)); // Base mid
-  const color2 = hslToHex((hsl.h + 25) % 360, Math.max(hsl.s, 70), Math.min(hsl.l * 1.1, 75)); // Shimmer warm
+  const color2 = hslToHex((hsl.h + 25) % 360, Math.max(hsl.s, 70), Math.min(hsl.l * 0.9, 65)); // Shimmer warm
   const color3 = hslToHex((hsl.h - 45 + 360) % 360, Math.min(hsl.s * 1.2, 100), Math.min(hsl.l * 0.85, 55)); // Counter tone
-  const color4 = hslToHex((hsl.h + 75) % 360, Math.min(hsl.s * 1.3, 100), Math.min(hsl.l * 1.2, 80)); // Vivid top peak
+  const color4 = hslToHex((hsl.h + 75) % 360, Math.min(hsl.s * 1.3, 100), Math.min(hsl.l * 1.0, 70)); // Vivid top peak
 
   return {
     bgStyle: `linear-gradient(135deg, ${color1} 0%, ${color2} 33%, ${color3} 66%, ${color4} 100%)`,
@@ -1197,13 +1197,7 @@ export default function App() {
             <button className="text-gray-500 hover:bg-black hover:text-white px-2 py-0.5">Edit</button>
             <button className="text-gray-500 hover:bg-black hover:text-white px-2 py-0.5">View</button>
             <button className="text-gray-500 hover:bg-black hover:text-white px-2 py-0.5">Help</button>
-            <div className="h-3 w-[1px] bg-zinc-300 mx-1" />
-            <button 
-              onClick={() => setAppMode('welcome')} 
-              className="text-zinc-955 hover:bg-black hover:force-white-text hover:text-white px-2.5 py-0.5 border border-zinc-400 font-mono font-black tracking-widest bg-[#e8e8e8] shadow-[inset_1px_1px_0px_0px_#ffffff,inset_-1px_-1px_0px_0px_#808080] active:translate-x-[1px] active:translate-y-[1px]"
-            >
-              ← ATELIER_HOME
-            </button>
+
           </nav>
         </div>
         <div className="flex gap-1 items-center mr-1">

@@ -27,8 +27,13 @@ export async function processChatCommand(
 - legTopSize: 桌腿顶部大小(mm)，范围[20-120]，必须满足 <= frameThickness
 - legBottomSize: 桌腿底部大小(mm)，范围[10-100]
 - legInnerDepth: 桌腿内侧探出框架的额外深度(mm)，范围[0-200]
-- color: 十六进制颜色代码（例如 #FF0000 或者是桌子材质的天然颜色，像是木纹色、黑灰色、白色等）
+- color: 十六进制颜色代码
 - material: 材质，可选值为 "oak" (橡木), "steel" (钢材), "glass" (玻璃), "chrome" (镀铬), "marble" (大理石)
+- chairId: 椅子ID，仅限 "CY-A1"
+- chairMaterial: 椅子材质，可选值为 'titanium' (钛合金), 'fabric' (科技布)
+
+椅子选择规则：
+如果用户要求更换椅子，必须将 chairId 设置为 "CY-A1"，并同时从 ('titanium', 'fabric') 中随机选择一个 chairMaterial，作为配套的椅子配置。
 
 几何约束规则（非必要时请保持框架厚度 >= 桌腿顶部大小）：
 1. 框架厚度(frameThickness) 必须 >= 桌腿顶部大小(legTopSize)，防止桌腿渲染几何体溢出到支撑框架外。
@@ -41,7 +46,7 @@ JSON 对象格式要求：
   "config": {
     // 包含要修改的参数及其数值（仅包含被修改的部分，不要将所有参数全写进去，数字直接写数值不带单位）
   },
-  "message": "在15-30字之间说明做出了哪些调整，用中文回复。"
+  "message": "在30-60字之间详细说明做出的调整，并向用户解释为何这样调整，用中文回复。"
 }
 
 示例回复：
