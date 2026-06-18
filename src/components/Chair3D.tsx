@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 
@@ -10,10 +10,21 @@ interface Chair3DProps {
   chairBackrestAngle?: number;
   chairHasArmrest?: boolean;
   progress?: number;
+  fabricGradientStart?: string;
+  fabricGradientEnd?: string;
+  fabricGradientAngle?: number;
+  useCustomGradient?: boolean;
+  fabricGradientType?: 'linear' | 'radial';
+  fabricGradientRadius?: number;
 }
 
 const ARMREST_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E6%89%B6%E6%89%8B%E6%A4%85.glb';
 const LANZI_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/lanzi1.glb';
+const PINK_BLUE_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E7%B2%89%E8%93%9D2.glb';
+const CHAIR1_FABRIC_COLOR3_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E9%BB%913.glb';
+const CHAIR1_FABRIC_COLOR4_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E8%93%9D%E9%BB%84.glb';
+const CHAIR1_FABRIC_COLOR5_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E9%BB%84%E7%B4%AB5.glb';
+const CHAIR1_FABRIC_COLOR6_MODEL_URL = 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E7%B2%89%E7%BA%A26.glb';
 
 function getChairModelUrl(num: number): string {
   if (num >= 1 && num <= 7) {
@@ -88,19 +99,389 @@ try {
 } catch (e) {
   console.warn('Failed to preload lanzi model:', e);
 }
+try {
+  useGLTF.preload(PINK_BLUE_MODEL_URL);
+} catch (e) {
+  console.warn('Failed to preload pink blue model:', e);
+}
+try {
+  useGLTF.preload(CHAIR1_FABRIC_COLOR3_MODEL_URL);
+} catch (e) {
+  console.warn('Failed to preload fabric color 3 model:', e);
+}
+try {
+  useGLTF.preload(CHAIR1_FABRIC_COLOR4_MODEL_URL);
+} catch (e) {
+  console.warn('Failed to preload fabric color 4 model:', e);
+}
+try {
+  useGLTF.preload(CHAIR1_FABRIC_COLOR5_MODEL_URL);
+} catch (e) {
+  console.warn('Failed to preload fabric color 5 model:', e);
+}
+try {
+  useGLTF.preload(CHAIR1_FABRIC_COLOR6_MODEL_URL);
+} catch (e) {
+  console.warn('Failed to preload fabric color 6 model:', e);
+}
+
+const blendedWoodTexturesCache: Record<string, THREE.CanvasTexture> = {};
+const blendedFabricTexturesCache: Record<string, THREE.CanvasTexture> = {};
+
+let globalWoodTextureLoadCallback: (() => void) | null = null;
+
+export function transformTextureToWood(originalTexture: THREE.Texture, woodGrain: 'walnut' | 'cherry' | 'ash' | 'oak'): THREE.Texture {
+  if (!originalTexture || !originalTexture.image) return originalTexture;
+  
+  const cacheKey = `${originalTexture.uuid}_${woodGrain}`;
+  if (blendedWoodTexturesCache[cacheKey]) {
+    return blendedWoodTexturesCache[cacheKey];
+  }
+
+  try {
+    const origImg = originalTexture.image as HTMLImageElement;
+    const canvas = document.createElement('canvas');
+    canvas.width = origImg.width || 1024;
+    canvas.height = origImg.height || 1024;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return originalTexture;
+
+    // Draw original baked texture
+    ctx.drawImage(origImg, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+
+    // Generate or fetch the wood grain canvas
+    let woodTexture = woodMatInstances[woodGrain]?.map;
+    let woodImg = woodTexture && woodTexture.image ? (woodTexture.image as any) : null;
+
+    // Create a procedural wood grain texture pattern for reliable instant blending
+    const woodCanvas = document.createElement('canvas');
+    woodCanvas.width = canvas.width;
+    woodCanvas.height = canvas.height;
+    const woodCtx = woodCanvas.getContext('2d');
+    if (woodCtx) {
+      let color1 = '#d1a87e';
+      let color2 = '#b58a59';
+      let color3 = '#9f7344';
+      let veinColor = 'rgba(84, 50, 19, 0.18)';
+
+      if (woodGrain === 'walnut') {
+        color1 = '#5c3e21';
+        color2 = '#442b14';
+        color3 = '#2d1c0b';
+        veinColor = 'rgba(25, 12, 4, 0.35)';
+      } else if (woodGrain === 'cherry') {
+        color1 = '#a59182';
+        color2 = '#8b796a';
+        color3 = '#594c41';
+        veinColor = 'rgba(71, 60, 51, 0.25)';
+      } else if (woodGrain === 'ash') {
+        color1 = '#f6f0e4';
+        color2 = '#e8dbbe';
+        color3 = '#dac5a3';
+        veinColor = 'rgba(138, 124, 100, 0.15)';
+      } else if (woodGrain === 'oak') {
+        color1 = '#cfa068';
+        color2 = '#b58850';
+        color3 = '#946631';
+        veinColor = 'rgba(74, 46, 15, 0.25)';
+      }
+
+      const grad = woodCtx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0, color1);
+      grad.addColorStop(0.5, color2);
+      grad.addColorStop(1, color3);
+      woodCtx.fillStyle = grad;
+      woodCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+      woodCtx.strokeStyle = veinColor;
+      for (let i = 0; i < 60; i++) {
+        woodCtx.lineWidth = 1.0 + Math.random() * 3.0;
+        woodCtx.beginPath();
+        const xBase = Math.random() * canvas.width;
+        woodCtx.moveTo(xBase, 0);
+        woodCtx.bezierCurveTo(
+          xBase + Math.sin(0 * 0.05) * 50, canvas.height / 4,
+          xBase + Math.sin(120 * 0.02) * 40, canvas.height * 3 / 4,
+          xBase + Math.sin(canvas.height * 0.05) * 60, canvas.height
+        );
+        woodCtx.stroke();
+      }
+    }
+
+    const woodImgData = woodCtx ? woodCtx.getImageData(0, 0, canvas.width, canvas.height) : null;
+    const woodData = woodImgData ? woodImgData.data : null;
+
+    // Check if Unsplash image finished loading and blend it patterns instead for premium results
+    let hasLoadedUnsplash = false;
+    if (woodImg && (woodImg.complete || woodImg.readyState >= 2) && woodImg.width > 0) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        const pattern = tempCtx.createPattern(woodImg, 'repeat');
+        if (pattern) {
+          tempCtx.fillStyle = pattern;
+          tempCtx.scale(2, 2);
+          tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+          const tempImgData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+          const realWoodData = tempImgData.data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+            
+            if (saturation > 15) {
+              const rawLuminance = (r * 0.299 + g * 0.587 + b * 0.114);
+              // Balanced contrast multiplier: prevents wood details from getting blown out to flat white
+              const shadowFactor = 0.35 + (rawLuminance / 255.0) * 0.75;
+              data[i] = Math.min(255, Math.max(0, realWoodData[i] * shadowFactor));
+              data[i + 1] = Math.min(255, Math.max(0, realWoodData[i + 1] * shadowFactor));
+              data[i + 2] = Math.min(255, Math.max(0, realWoodData[i + 2] * shadowFactor));
+            }
+          }
+          hasLoadedUnsplash = true;
+        }
+      }
+    }
+
+    if (!hasLoadedUnsplash && woodData) {
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+
+        if (saturation > 15) {
+          const rawLuminance = (r * 0.299 + g * 0.587 + b * 0.114);
+          // Balanced contrast multiplier: prevents wood details from getting blown out to flat white
+          const shadowFactor = 0.35 + (rawLuminance / 255.0) * 0.75;
+          data[i] = Math.min(255, Math.max(0, woodData[i] * shadowFactor));
+          data[i + 1] = Math.min(255, Math.max(0, woodData[i + 1] * shadowFactor));
+          data[i + 2] = Math.min(255, Math.max(0, woodData[i + 2] * shadowFactor));
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    const blendedTex = new THREE.CanvasTexture(canvas);
+    blendedTex.wrapS = originalTexture.wrapS;
+    blendedTex.wrapT = originalTexture.wrapT;
+    blendedTex.magFilter = originalTexture.magFilter;
+    blendedTex.minFilter = originalTexture.minFilter;
+    blendedTex.repeat.copy(originalTexture.repeat);
+    blendedTex.offset.copy(originalTexture.offset);
+    blendedTex.center.copy(originalTexture.center);
+    blendedTex.rotation = originalTexture.rotation;
+    blendedTex.flipY = originalTexture.flipY;
+    
+    blendedWoodTexturesCache[cacheKey] = blendedTex;
+    return blendedTex;
+  } catch (err) {
+    console.error("Failed to dynamically blend wood texture:", err);
+  }
+
+  return originalTexture;
+}
+
+export function transformTextureToFabric(
+  originalTexture: THREE.Texture, 
+  fabricColor: string,
+  useCustomGradient?: boolean,
+  gradientStart?: string,
+  gradientEnd?: string,
+  gradientAngle?: number,
+  gradientType?: 'linear' | 'radial',
+  gradientRadius?: number
+): THREE.Texture {
+  if (!originalTexture || !originalTexture.image) return originalTexture;
+  
+  const cacheKey = useCustomGradient 
+    ? `${originalTexture.uuid}_custom_${gradientStart}_${gradientEnd}_${gradientAngle}_${gradientType || 'linear'}_${gradientRadius ?? 300}`
+    : `${originalTexture.uuid}_${fabricColor}`;
+
+  if (blendedFabricTexturesCache[cacheKey]) {
+    return blendedFabricTexturesCache[cacheKey];
+  }
+
+  try {
+    const origImg = originalTexture.image as HTMLImageElement;
+    const canvas = document.createElement('canvas');
+    canvas.width = origImg.width || 1024;
+    canvas.height = origImg.height || 1024;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return originalTexture;
+
+    // Draw original baked texture
+    ctx.drawImage(origImg, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+
+    let c1: {r: number, g: number, b: number};
+    let c2: {r: number, g: number, b: number};
+    let c3: {r: number, g: number, b: number};
+    let c4: {r: number, g: number, b: number};
+
+    const parseHexColor = (hexStr: string) => {
+      const cleanHex = hexStr.replace('#', '');
+      return {
+        r: parseInt(cleanHex.substring(0, 2), 16),
+        g: parseInt(cleanHex.substring(2, 4), 16),
+        b: parseInt(cleanHex.substring(4, 6), 16)
+      };
+    };
+
+    if (useCustomGradient && gradientStart && gradientEnd) {
+      const startCol = parseHexColor(gradientStart);
+      const endCol = parseHexColor(gradientEnd);
+      
+      const midCol = {
+        r: Math.round((startCol.r + endCol.r) / 2),
+        g: Math.round((startCol.g + endCol.g) / 2),
+        b: Math.round((startCol.b + endCol.b) / 2)
+      };
+
+      c1 = startCol;
+      c2 = midCol;
+      c3 = midCol;
+      c4 = endCol;
+    } else {
+      let activeHex = fabricColor;
+      if (activeHex === 'original' || activeHex === '#original') {
+        activeHex = '#5d5fdf';
+      }
+      const hsl = hexToHsl(activeHex);
+      
+      // Create harmonious color-shifting aurora gradient stops matching the pre-baked model styles
+      const colorHex1 = hslToHex(hsl.h, Math.max(hsl.s * 0.9, 50), Math.max(hsl.l * 0.5, 15)); // Base mid
+      const colorHex2 = hslToHex((hsl.h + 25) % 360, Math.max(hsl.s, 70), Math.min(hsl.l * 1.1, 75)); // Shimmer warm
+      const colorHex3 = hslToHex((hsl.h - 45 + 360) % 360, Math.min(hsl.s * 1.2, 100), Math.min(hsl.l * 0.85, 55)); // Counter tone
+      const colorHex4 = hslToHex((hsl.h + 75) % 360, Math.min(hsl.s * 1.3, 100), Math.min(hsl.l * 1.2, 80)); // Vivid top peak
+
+      c1 = parseHexColor(colorHex1);
+      c2 = parseHexColor(colorHex2);
+      c3 = parseHexColor(colorHex3);
+      c4 = parseHexColor(colorHex4);
+    }
+
+    const interpolateColor = (colorA: {r: number, g: number, b: number}, colorB: {r: number, g: number, b: number}, t: number) => {
+      return {
+        r: colorA.r + (colorB.r - colorA.r) * t,
+        g: colorA.g + (colorB.g - colorA.g) * t,
+        b: colorA.b + (colorB.b - colorA.b) * t
+      };
+    };
+
+    const getGradientColorAt = (u: number) => {
+      const clampedU = Math.min(1.0, Math.max(0.0, u));
+      if (clampedU <= 0.3) {
+        const t = clampedU / 0.3;
+        return interpolateColor(c1, c2, t);
+      } else if (clampedU <= 0.65) {
+        const t = (clampedU - 0.3) / 0.35;
+        return interpolateColor(c2, c3, t);
+      } else {
+        const t = (clampedU - 0.65) / 0.35;
+        return interpolateColor(c3, c4, t);
+      }
+    };
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Angle calculation: translate degrees to unit vector
+    const angleRad = ((gradientAngle ?? 135) * Math.PI) / 180;
+    const vx = Math.cos(angleRad);
+    const vy = Math.sin(angleRad);
+
+    // Corner projections to map coordinates cleanly in [0, 1] range
+    const p00 = 0;
+    const p10 = vx;
+    const p01 = vy;
+    const p11 = vx + vy;
+
+    const minP = Math.min(p00, p10, p01, p11);
+    const maxP = Math.max(p00, p10, p01, p11);
+    const rangeP = (maxP - minP) || 1.0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+
+      if (saturation > 15) {
+        const rawLuminance = (r * 0.299 + g * 0.587 + b * 0.114);
+        // Balanced contrast multiplier: prevents fabric details from getting blown out to flat white
+        const shadowFactor = 0.35 + (rawLuminance / 255.0) * 0.75;
+        
+        const pixelIdx = i / 4;
+        const x = pixelIdx % width;
+        const y = Math.floor(pixelIdx / width);
+        
+        const px = x / width;
+        const py = y / height;
+
+        let u;
+        if (useCustomGradient && gradientType === 'radial') {
+          const dx = px - 0.5;
+          const dy = py - 0.5;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const divisor = (gradientRadius ?? 300) / 500.0;
+          u = Math.min(1.0, dist / (divisor || 0.6));
+        } else {
+          // Perform linear projection
+          const proj = px * vx + py * vy;
+          u = (proj - minP) / rangeP;
+        }
+
+        const targetColor = getGradientColorAt(u);
+        
+        data[i] = Math.min(255, Math.max(0, targetColor.r * shadowFactor));
+        data[i + 1] = Math.min(255, Math.max(0, targetColor.g * shadowFactor));
+        data[i + 2] = Math.min(255, Math.max(0, targetColor.b * shadowFactor));
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    const blendedTex = new THREE.CanvasTexture(canvas);
+    blendedTex.wrapS = originalTexture.wrapS;
+    blendedTex.wrapT = originalTexture.wrapT;
+    blendedTex.magFilter = originalTexture.magFilter;
+    blendedTex.minFilter = originalTexture.minFilter;
+    blendedTex.repeat.copy(originalTexture.repeat);
+    blendedTex.offset.copy(originalTexture.offset);
+    blendedTex.center.copy(originalTexture.center);
+    blendedTex.rotation = originalTexture.rotation;
+    blendedTex.flipY = originalTexture.flipY;
+    
+    blendedFabricTexturesCache[cacheKey] = blendedTex;
+    return blendedTex;
+  } catch (err) {
+    console.error("Failed to dynamically blend fabric texture:", err);
+  }
+
+  return originalTexture;
+}
 
 // Custom offset translation / scaling adjust parameters to align the armrests perfectly and beautifully with each of the 7 designs
 const ARMREST_ADJUSTMENTS: Record<number, { pos: [number, number, number]; scale: [number, number, number] }> = {
-  1: { pos: [0, -0.012, -0.01], scale: [1.02, 0.98, 1.02] },
-  2: { pos: [0, -0.015, -0.024], scale: [1.02, 0.95, 0.98] },
-  3: { pos: [0, -0.014, -0.5052], scale: [0.96, 0.95, 1.0] },
-  4: { pos: [0, 0.006, 0.012], scale: [1.12, 1.0, 1.03] }, // Slightly wider fit for Chair 4
-  5: { pos: [0, -0.024, 0.018], scale: [0.95, 0.92, 1.0] }, // Slightly narrower fit for Chair 5
-  6: { pos: [0, 0.02, 0.016], scale: [1.05, 0.98, 1.02] },
-  7: { pos: [0, 0.008, 0.018], scale: [1.08, 1.0, 1.03] }
+  1: { pos: [0, -0.012, -0.28], scale: [1.02, 0.98, 1.02] },
+  2: { pos: [0, -0.015, -0.294], scale: [1.02, 0.95, 0.98] },
+  3: { pos: [0, -0.014, -0.7752], scale: [0.96, 0.95, 1.0] },
+  4: { pos: [0, 0.006, -0.258], scale: [1.12, 1.0, 1.03] }, // Slightly wider fit for Chair 4
+  5: { pos: [0, -0.024, -0.252], scale: [0.95, 0.92, 1.0] }, // Slightly narrower fit for Chair 5
+  6: { pos: [0, 0.02, -0.254], scale: [1.05, 0.98, 1.02] },
+  7: { pos: [0, 0.008, -0.252], scale: [1.08, 1.0, 1.03] }
 };
 
-// Custom procedural technical wood texture to match Figure 1
+// Custom procedural technical wood texture with gorgeous photorealistic high-res image loadings
 const createWoodMaterial = (grain: 'walnut' | 'cherry' | 'ash' | 'oak' = 'walnut') => {
   let color1 = '#d1a87e';
   let color2 = '#b58a59';
@@ -108,20 +489,25 @@ const createWoodMaterial = (grain: 'walnut' | 'cherry' | 'ash' | 'oak' = 'walnut
   let veinColor = 'rgba(84, 50, 19, 0.18)';
 
   if (grain === 'walnut') { // Walnut: tech dark brown
-    color1 = '#78543d';
-    color2 = '#5a3d2b';
-    color3 = '#3d251a';
-    veinColor = 'rgba(40, 20, 10, 0.25)';
+    color1 = '#5c3e21';
+    color2 = '#442b14';
+    color3 = '#2d1c0b';
+    veinColor = 'rgba(25, 12, 4, 0.35)';
   } else if (grain === 'cherry') { // Cherry: warm reddish brown
-    color1 = '#aa5c3c';
-    color2 = '#8c4323';
-    color3 = '#6e2b10';
-    veinColor = 'rgba(60, 20, 5, 0.22)';
+    color1 = '#a65437';
+    color2 = '#8c3d23';
+    color3 = '#692510';
+    veinColor = 'rgba(54, 15, 3, 0.3)';
   } else if (grain === 'ash') { // Ash: light gray/yellow Scandinavian ash
     color1 = '#eedbc8';
-    color2 = '#d3bda9';
-    color3 = '#bfa58f';
-    veinColor = 'rgba(100, 80, 60, 0.15)';
+    color2 = '#d9c2af';
+    color3 = '#c5ae9c';
+    veinColor = 'rgba(100, 80, 60, 0.18)';
+  } else if (grain === 'oak') { // Oak: classic honey-golden oak
+    color1 = '#cfa068';
+    color2 = '#b58850';
+    color3 = '#946631';
+    veinColor = 'rgba(74, 46, 15, 0.25)';
   }
 
   const woodCanvas = document.createElement('canvas');
@@ -157,13 +543,50 @@ const createWoodMaterial = (grain: 'walnut' | 'cherry' | 'ash' | 'oak' = 'walnut
   woodTex.wrapT = THREE.RepeatWrapping;
   woodTex.repeat.set(1.5, 1.5);
 
-  return new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     map: woodTex,
-    roughness: 0.5,
-    metalness: 0.05,
+    roughness: 0.35, // Premium semi-gloss/satin wood polish
+    metalness: 0.02,
     bumpMap: woodTex,
-    bumpScale: 0.005
+    bumpScale: 0.003
   });
+
+  // Load highly realistic seamless wood texture from Unsplash global CDN
+  const urlMap: Record<string, string> = {
+    walnut: 'https://images.unsplash.com/photo-1531685222403-f928502d2b30?auto=format&fit=crop&w=1024&q=80',
+    cherry: 'https://images.unsplash.com/photo-1541123437800-1bb1317badc2?auto=format&fit=crop&w=1024&q=80',
+    ash: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1024&q=80',
+    oak: 'https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=1024&q=80'
+  };
+
+  const selectedUrl = urlMap[grain];
+  if (selectedUrl) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.crossOrigin = 'anonymous';
+    textureLoader.load(selectedUrl, (loadedTex) => {
+      loadedTex.wrapS = THREE.RepeatWrapping;
+      loadedTex.wrapT = THREE.RepeatWrapping;
+      loadedTex.repeat.set(1.5, 1.5);
+      
+      mat.map = loadedTex;
+      mat.bumpMap = loadedTex;
+      mat.bumpScale = 0.002;
+      mat.roughness = 0.32;
+      mat.needsUpdate = true;
+
+      // Clear the cache of blended wood textures so they are recalculated with high-resolution maps!
+      Object.keys(blendedWoodTexturesCache).forEach(key => {
+        delete blendedWoodTexturesCache[key];
+      });
+      if (globalWoodTextureLoadCallback) {
+        globalWoodTextureLoadCallback();
+      }
+    }, undefined, (err) => {
+      console.warn(`Failed to load high-resolution wood texture for '${grain}':`, err);
+    });
+  }
+
+  return mat;
 };
 
 // Helper to convert hex to HSL for color harmony generation
@@ -204,29 +627,55 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 // Custom procedural fabric material with iridescent color shifting gradient that varies with selected color
-const createFabricMaterialForColor = (baseColor: string) => {
+const createFabricMaterialForColor = (
+  baseColor: string,
+  useCustomGradient?: boolean,
+  gradientStart?: string,
+  gradientEnd?: string,
+  gradientAngle?: number,
+  gradientType?: 'linear' | 'radial',
+  gradientRadius?: number
+) => {
   const fabricCanvas = document.createElement('canvas');
   fabricCanvas.width = 512;
   fabricCanvas.height = 512;
   const ctx = fabricCanvas.getContext('2d');
   if (ctx) {
-    let activeHex = baseColor;
-    if (activeHex === 'original' || activeHex === '#original') {
-      activeHex = '#b197fc'; // Elegant default purple
+    let grad;
+    if (useCustomGradient && gradientType === 'radial') {
+      const r = gradientRadius ?? 300;
+      grad = ctx.createRadialGradient(256, 256, r * 0.03, 256, 256, r);
+    } else {
+      // Calculate angle mapping to 2D gradient line segment within the 512x512 canvas
+      const angleRad = ((gradientAngle ?? 135) * Math.PI) / 180;
+      const x0 = 256 + Math.cos(angleRad + Math.PI) * 256;
+      const y0 = 256 + Math.sin(angleRad + Math.PI) * 256;
+      const x1 = 256 + Math.cos(angleRad) * 256;
+      const y1 = 256 + Math.sin(angleRad) * 256;
+      grad = ctx.createLinearGradient(x0, y0, x1, y1);
     }
-    const hsl = hexToHsl(activeHex);
-    
-    // Create harmonious color-shifting aurora gradient stops
-    const color1 = hslToHex(hsl.h, Math.max(hsl.s * 0.9, 50), Math.max(hsl.l * 0.5, 15)); // Base mid
-    const color2 = hslToHex((hsl.h + 25) % 360, Math.max(hsl.s, 70), Math.min(hsl.l * 1.1, 75)); // Shimmer warm
-    const color3 = hslToHex((hsl.h - 45 + 360) % 360, Math.min(hsl.s * 1.2, 100), Math.min(hsl.l * 0.85, 55)); // Counter tone
-    const color4 = hslToHex((hsl.h + 75) % 360, Math.min(hsl.s * 1.3, 100), Math.min(hsl.l * 1.2, 80)); // Vivid top peak
 
-    const grad = ctx.createLinearGradient(0, 0, 512, 512);
-    grad.addColorStop(0.0, color1);
-    grad.addColorStop(0.3, color2);
-    grad.addColorStop(0.65, color3);
-    grad.addColorStop(1.0, color4);
+    if (useCustomGradient && gradientStart && gradientEnd) {
+      grad.addColorStop(0.0, gradientStart);
+      grad.addColorStop(1.0, gradientEnd);
+    } else {
+      let activeHex = baseColor;
+      if (activeHex === 'original' || activeHex === '#original') {
+        activeHex = '#5d5fdf'; // Elegant default purple
+      }
+      const hsl = hexToHsl(activeHex);
+      
+      // Create harmonious color-shifting aurora gradient stops
+      const color1 = hslToHex(hsl.h, Math.max(hsl.s * 0.9, 50), Math.max(hsl.l * 0.5, 15)); // Base mid
+      const color2 = hslToHex((hsl.h + 25) % 360, Math.max(hsl.s, 70), Math.min(hsl.l * 1.1, 75)); // Shimmer warm
+      const color3 = hslToHex((hsl.h - 45 + 360) % 360, Math.min(hsl.s * 1.2, 100), Math.min(hsl.l * 0.85, 55)); // Counter tone
+      const color4 = hslToHex((hsl.h + 75) % 360, Math.min(hsl.s * 1.3, 100), Math.min(hsl.l * 1.2, 80)); // Vivid top peak
+
+      grad.addColorStop(0.0, color1);
+      grad.addColorStop(0.3, color2);
+      grad.addColorStop(0.65, color3);
+      grad.addColorStop(1.0, color4);
+    }
     
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 512);
@@ -332,7 +781,7 @@ function getFacetMaterialIndex(symSeed: number, complexity: number): number {
   return 0; // Base titanium
 }
 
-function createInsetPanelsGeometry(originalGeometry: THREE.BufferGeometry, meshName: string, complexity: number) {
+function createInsetPanelsGeometry(originalGeometry: THREE.BufferGeometry, meshName: string, complexity: number, isWood: boolean = false) {
   if (!originalGeometry.boundingBox) {
     originalGeometry.computeBoundingBox();
   }
@@ -381,7 +830,7 @@ function createInsetPanelsGeometry(originalGeometry: THREE.BufferGeometry, meshN
     
     const symSeed = getSymmetricFaceSeed(v0, v1, v2, meshName);
     const matIdx = getFacetMaterialIndex(symSeed, complexity);
-    if (matIdx === 0) {
+    if (!isWood && matIdx === 0) {
       continue;
     }
     
@@ -390,13 +839,13 @@ function createInsetPanelsGeometry(originalGeometry: THREE.BufferGeometry, meshN
     const edge2 = new THREE.Vector3().subVectors(v2, v0);
     const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
     
-    // Inset Scale of 0.86 creates a neat 14% frame margin around each facet,
-    // exposing the underlying, high-specular titanium boundaries perfectly matching Image 3!
-    const insetScale = 0.86;
+    // Inset Scale of 1.0 for Wood prevents any cracks, providing fully cohesive, beautiful solid wood veneer plates
+    // While 0.86 creates a neat 14% frame margin around each facet for Fabric
+    const insetScale = isWood ? 1.0 : 0.86;
     
-    // Push panel outwards along the face normal by 0.8 mm (thin stickers / custom skin overlays).
-    // Concurrently paired with GPU-level polygonOffset, this provides beautiful relief without any possible z-fighting!
-    const outOffset = 0.0008;
+    // Push panel outwards along the face normal.
+    // Wood uses 0.0012 outwards offset to perfectly float cleanly without any z-fighting.
+    const outOffset = isWood ? 0.0013 : 0.0008;
     
     const u0 = new THREE.Vector3().subVectors(v0, centroid).multiplyScalar(insetScale).add(centroid).addScaledVector(faceNormal, outOffset);
     const u1 = new THREE.Vector3().subVectors(v1, centroid).multiplyScalar(insetScale).add(centroid).addScaledVector(faceNormal, outOffset);
@@ -410,7 +859,8 @@ function createInsetPanelsGeometry(originalGeometry: THREE.BufferGeometry, meshN
     panelNormals.push(faceNormal.x, faceNormal.y, faceNormal.z);
     panelNormals.push(faceNormal.x, faceNormal.y, faceNormal.z);
     
-    panelMatIndices.push(matIdx, matIdx, matIdx);
+    const finalMatIdx = isWood ? 0 : matIdx;
+    panelMatIndices.push(finalMatIdx, finalMatIdx, finalMatIdx);
   }
   
   nonIndexed.dispose();
@@ -636,8 +1086,25 @@ export function Chair3D({
   woodGrain = 'walnut', 
   chairBackrestAngle = 0, 
   chairHasArmrest = false,
-  progress
+  progress,
+  fabricGradientStart = '#5d5fdf',
+  fabricGradientEnd = '#fc678a',
+  fabricGradientAngle = 135,
+  useCustomGradient = false,
+  fabricGradientType = 'linear',
+  fabricGradientRadius = 300
 }: Chair3DProps) {
+  const [loadTrigger, setLoadTrigger] = useState(0);
+
+  useEffect(() => {
+    globalWoodTextureLoadCallback = () => {
+      setLoadTrigger(prev => prev + 1);
+    };
+    return () => {
+      globalWoodTextureLoadCallback = null;
+    };
+  }, []);
+
   const chairTextureComplex = 5; // Fixed fallback for dynamic panels if ever generated
   // Identify index/number of the chair from its ID (e.g. "CY-A1" -> 1, "CY-A7" -> 7)
   const chairNumber = useMemo(() => {
@@ -646,8 +1113,33 @@ export function Chair3D({
   }, [chairId]);
 
   const GLTF_URL = useMemo(() => {
-    if (chairNumber === 1 && chairMaterial === 'fabric' && color?.toLowerCase() === '#ff6b6b') {
-      return LANZI_MODEL_URL;
+    if (chairNumber === 1) {
+      if (chairMaterial === 'wood') {
+        // Use high-quality non-overlay model for wood texture blending
+        return LANZI_MODEL_URL;
+      }
+      if (chairMaterial === 'fabric') {
+        if (color?.toLowerCase() === '#5d5fdf') {
+          return LANZI_MODEL_URL;
+        }
+        if (color?.toLowerCase() === '#e8a7cb') {
+          return PINK_BLUE_MODEL_URL;
+        }
+        if (color?.toLowerCase() === '#2d2d30') {
+          return CHAIR1_FABRIC_COLOR3_MODEL_URL;
+        }
+        if (color?.toLowerCase() === '#3c76f2') {
+          return CHAIR1_FABRIC_COLOR4_MODEL_URL;
+        }
+        if (color?.toLowerCase() === '#eec13a') {
+          return CHAIR1_FABRIC_COLOR5_MODEL_URL;
+        }
+        if (color?.toLowerCase() === '#fc678a') {
+          return CHAIR1_FABRIC_COLOR6_MODEL_URL;
+        }
+        // Fallback to high-quality model for dyeing other custom fabric colors
+        return LANZI_MODEL_URL;
+      }
     }
     return getChairModelUrl(chairNumber);
   }, [chairNumber, chairMaterial, color]);
@@ -766,14 +1258,31 @@ export function Chair3D({
       woodMatInstances[woodGrain] = createWoodMaterial(woodGrain);
     }
 
-    let activeFabricColor = color;
-    if (!activeFabricColor || activeFabricColor === 'original' || activeFabricColor === '#original' || activeFabricColor === '#ffffff') {
-      activeFabricColor = '#b197fc'; // Default lilac purple if none selected
+    let currentFabricMat;
+    if (useCustomGradient) {
+      const customCacheKey = `custom_${fabricGradientStart}_${fabricGradientEnd}_${fabricGradientAngle}_${fabricGradientType}_${fabricGradientRadius}`;
+      if (!fabricMatInstances[customCacheKey]) {
+        fabricMatInstances[customCacheKey] = createFabricMaterialForColor(
+          '#5d5fdf',
+          true,
+          fabricGradientStart,
+          fabricGradientEnd,
+          fabricGradientAngle,
+          fabricGradientType,
+          fabricGradientRadius
+        );
+      }
+      currentFabricMat = fabricMatInstances[customCacheKey];
+    } else {
+      let activeFabricColor = color;
+      if (!activeFabricColor || activeFabricColor === 'original' || activeFabricColor === '#original' || activeFabricColor === '#ffffff') {
+        activeFabricColor = '#5d5fdf'; // Default lilac purple if none selected
+      }
+      if (!fabricMatInstances[activeFabricColor]) {
+        fabricMatInstances[activeFabricColor] = createFabricMaterialForColor(activeFabricColor);
+      }
+      currentFabricMat = fabricMatInstances[activeFabricColor];
     }
-    if (!fabricMatInstances[activeFabricColor]) {
-      fabricMatInstances[activeFabricColor] = createFabricMaterialForColor(activeFabricColor);
-    }
-    const currentFabricMat = fabricMatInstances[activeFabricColor];
 
     clonedScene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -789,7 +1298,13 @@ export function Chair3D({
           const cloneMat = (m: any) => {
             if (!m) return m;
             const cl = m.clone();
-            if (chairNumber === 1 && GLTF_URL !== LANZI_MODEL_URL && cl.map) {
+            const isCustomModel = GLTF_URL === LANZI_MODEL_URL || 
+                                 GLTF_URL === PINK_BLUE_MODEL_URL ||
+                                 GLTF_URL === CHAIR1_FABRIC_COLOR3_MODEL_URL ||
+                                 GLTF_URL === CHAIR1_FABRIC_COLOR4_MODEL_URL ||
+                                 GLTF_URL === CHAIR1_FABRIC_COLOR5_MODEL_URL ||
+                                 GLTF_URL === CHAIR1_FABRIC_COLOR6_MODEL_URL;
+            if (chairNumber === 1 && !isCustomModel && cl.map) {
               cl.map = desaturateTexture(cl.map);
             }
             cl.needsUpdate = true;
@@ -805,11 +1320,86 @@ export function Chair3D({
           }
         }
 
-        // If this is the user's custom model (lanzi1.glb), keep its visual materials completely pristine and unaltered
+        // If this is a custom model (lanzi1.glb or pink_blue.glb or the custom fabric models), process materials, wood blending, and fabric dyeing beautifully
         const isArmrestMesh = mesh.name === 'chair_armrest' || mesh.name.includes('fushou') || (mesh.parent && (mesh.parent.name === 'chair_armrest' || mesh.parent.name.includes('fushou')));
-        if (GLTF_URL === LANZI_MODEL_URL && !isArmrestMesh) {
-          if (mesh.userData.originalMaterial) {
-            mesh.material = mesh.userData.originalMaterial;
+        const isCustomModel = GLTF_URL === LANZI_MODEL_URL || 
+                             GLTF_URL === PINK_BLUE_MODEL_URL ||
+                             GLTF_URL === CHAIR1_FABRIC_COLOR3_MODEL_URL ||
+                             GLTF_URL === CHAIR1_FABRIC_COLOR4_MODEL_URL ||
+                             GLTF_URL === CHAIR1_FABRIC_COLOR5_MODEL_URL ||
+                             GLTF_URL === CHAIR1_FABRIC_COLOR6_MODEL_URL;
+        if (isCustomModel && !isArmrestMesh) {
+          const originalMat = Array.isArray(mesh.userData.originalMaterial)
+            ? mesh.userData.originalMaterial[0]
+            : mesh.userData.originalMaterial;
+
+          if (chairMaterial === 'wood') {
+            if (originalMat && originalMat.map) {
+              const processedWoodMap = transformTextureToWood(originalMat.map, woodGrain || 'walnut');
+              
+              const woodMaterial = new THREE.MeshStandardMaterial({
+                map: processedWoodMap,
+                bumpMap: processedWoodMap,
+                bumpScale: 0.002,
+                roughness: 0.8, // Pure organic matte finish, never shiny
+                metalness: 0.0, // Non-metallic wood
+                transparent: false,
+                opacity: 1.0,
+                envMapIntensity: 0.15 // Soft specular highlights, ceases looking like glass or reflection chrome
+              });
+              
+              woodMaterial.needsUpdate = true;
+              mesh.material = woodMaterial;
+            } else if (mesh.userData.originalMaterial) {
+              mesh.material = mesh.userData.originalMaterial;
+            }
+          } else if (chairMaterial === 'fabric') {
+            const isNativeRed = color?.toLowerCase() === '#5d5fdf' && GLTF_URL === LANZI_MODEL_URL;
+            const isNativeGreen = color?.toLowerCase() === '#e8a7cb' && GLTF_URL === PINK_BLUE_MODEL_URL;
+            const isNativeColor3 = color?.toLowerCase() === '#2d2d30' && GLTF_URL === CHAIR1_FABRIC_COLOR3_MODEL_URL;
+            const isNativeColor4 = color?.toLowerCase() === '#3c76f2' && GLTF_URL === CHAIR1_FABRIC_COLOR4_MODEL_URL;
+            const isNativeColor5 = color?.toLowerCase() === '#eec13a' && GLTF_URL === CHAIR1_FABRIC_COLOR5_MODEL_URL;
+            const isNativeColor6 = color?.toLowerCase() === '#fc678a' && GLTF_URL === CHAIR1_FABRIC_COLOR6_MODEL_URL;
+            
+            const hasNativePresetColor = !useCustomGradient && (isNativeRed || isNativeGreen || isNativeColor3 || isNativeColor4 || isNativeColor5 || isNativeColor6);
+
+            if (hasNativePresetColor) {
+              if (mesh.userData.originalMaterial) {
+                mesh.material = mesh.userData.originalMaterial;
+              }
+            } else {
+              // Dynamically dye the cushion to any chosen custom fabric color or custom gradient!
+              if (originalMat && originalMat.map && (color || useCustomGradient)) {
+                const dyedFabricMap = transformTextureToFabric(
+                  originalMat.map, 
+                  color || '#5d5fdf',
+                  useCustomGradient,
+                  fabricGradientStart,
+                  fabricGradientEnd,
+                  fabricGradientAngle,
+                  fabricGradientType,
+                  fabricGradientRadius
+                );
+                
+                const fabricMaterial = new THREE.MeshStandardMaterial({
+                  map: dyedFabricMap,
+                  roughness: 0.85, // Highly matte fabric texture
+                  metalness: 0.0, // Non-metallic textile
+                  transparent: false,
+                  opacity: 1.0,
+                  envMapIntensity: 0.25
+                });
+                
+                fabricMaterial.needsUpdate = true;
+                mesh.material = fabricMaterial;
+              } else if (mesh.userData.originalMaterial) {
+                mesh.material = mesh.userData.originalMaterial;
+              }
+            }
+          } else {
+            if (mesh.userData.originalMaterial) {
+              mesh.material = mesh.userData.originalMaterial;
+            }
           }
           mesh.visible = true;
           return;
@@ -849,11 +1439,11 @@ export function Chair3D({
         // Retrieve any existing panel overlay mesh
         const existingPanel = mesh.getObjectByName('mesh_panel_overlay') as THREE.Mesh | undefined;
 
-        // 1. Resolve dynamic overlay panel requirements for Combined Models (1, 2, 3)
-        const isCombined = chairNumber === 1;
+        // 1. Resolve dynamic overlay panel requirements for Combined Models (1, 2, 3, 7)
+        const isCombined = chairNumber === 1 || chairNumber === 2 || chairNumber === 3 || chairNumber === 7;
+        // As requested: Technical Wood (科技木) is generated as cohesive seamless overlay panels
         const shouldHaveTexture = isCombined && (
-          chairMaterial === 'wood' || 
-          chairMaterial === 'fabric'
+          chairMaterial === 'fabric' || chairMaterial === 'wood'
         );
 
         // Clean up or remove dynamic panel if it's no longer matching
@@ -897,49 +1487,61 @@ export function Chair3D({
 
         if (isModelWithBakedTexture) {
           // Model 2, 3, 7 have baked texture maps containing both the frame (silver) and cushions/veneers (black/dark).
-          // We must NOT strip their maps, and we must keep BOTH materials (backrest and base meshes) styled consistently!
-          const applyBakedModelStyles = (mat: any) => {
-            if (mat) {
-              // Ensure we do NOT clear maps! Keep original beautiful baked textures intact.
-              if (chairMaterial === 'titanium') {
-                if (isRawColor) {
-                  // Beautiful raw/natural white/silver titanium frame outline
-                  if (mat.color && typeof mat.color.set === 'function') {
-                    mat.color.set('#ffffff'); // Keep original crisp texture colors untouched! (No grey tinting of the black cushions!)
+          // However, some of them have separate physical veneer meshes (e.g. miao for Model 7).
+          // We must apply the selected wood or fabric texture directly to those separate veneer parts,
+          // while leaving the combined base/legs styled with the beautiful original baked material.
+          const isVeneer = isOriginalVeneerMaterial(mesh.material, mesh);
+
+          if (isVeneer && (chairMaterial === 'wood' || chairMaterial === 'fabric')) {
+            if (chairMaterial === 'wood') {
+              mesh.material = woodMatInstances[woodGrain];
+            } else if (chairMaterial === 'fabric') {
+              mesh.material = currentFabricMat;
+            }
+          } else {
+            const applyBakedModelStyles = (mat: any) => {
+              if (mat) {
+                // Ensure we do NOT clear maps! Keep original beautiful baked textures intact.
+                if (chairMaterial === 'titanium') {
+                  if (isRawColor) {
+                    // Beautiful raw/natural white/silver titanium frame outline
+                    if (mat.color && typeof mat.color.set === 'function') {
+                      mat.color.set('#ffffff'); // Keep original crisp texture colors untouched! (No grey tinting of the black cushions!)
+                    }
+                  } else {
+                    // Anodized colors: we can blend the color elegantly with the texture
+                    if (mat.color && typeof mat.color.set === 'function') {
+                      mat.color.set(baseHex);
+                    }
                   }
                 } else {
-                  // Anodized colors: we can blend the color elegantly with the texture
+                  // In wood/fabric modes, we also keep the gorgeous original baked silver frame + matte black pad contrast
+                  // (Otherwise, applying solid wood/fabric to a combined mesh makes the legs or frame turn into wood/fabric!)
                   if (mat.color && typeof mat.color.set === 'function') {
-                    mat.color.set(baseHex);
+                    mat.color.set('#ffffff');
                   }
                 }
-              } else {
-                // In wood/fabric modes, we also keep the gorgeous original baked silver frame + matte black pad contrast
-                // (Otherwise, applying solid wood/fabric to a combined mesh makes the legs or frame turn into wood/fabric!)
-                if (mat.color && typeof mat.color.set === 'function') {
-                  mat.color.set('#ffffff');
-                }
+                
+                // Apply beautiful physical matte properties to make the black cushions pop
+                if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
+                if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
+                
+                mat.needsUpdate = true;
               }
-              
-              // Apply beautiful physical matte properties to make the black cushions pop
-              if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
-              if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
-              
-              mat.needsUpdate = true;
-            }
-          };
+            };
 
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach(applyBakedModelStyles);
-          } else {
-            applyBakedModelStyles(mesh.material);
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach(applyBakedModelStyles);
+            } else {
+              applyBakedModelStyles(mesh.material);
+            }
           }
         } else {
-          // Standard customization flow for Models 1, 4, 5, 6
+          // Standard customization flow for Models 4, 5, 6
           const isVeneer = isOriginalVeneerMaterial(mesh.material, mesh);
 
           if (isVeneer) {
-            // Model 1, 4-6 native veneer/panel elements
+            // Model 4-6 native veneer/panel elements
             if (chairMaterial === 'wood') {
               mesh.material = woodMatInstances[woodGrain];
             } else if (chairMaterial === 'fabric') {
@@ -1016,29 +1618,21 @@ export function Chair3D({
           }
         }
 
-        // 4. For Combined Models (1, 2, 3), dynamically generate/texture the overlay panels if required
+        // 4. For Combined Models (1, 2, 3, 7), dynamically generate/texture the overlay panels if required
         if (shouldHaveTexture) {
           let currentPanel = mesh.getObjectByName('mesh_panel_overlay') as THREE.Mesh | undefined;
           if (!currentPanel) {
-            const panelGeom = createInsetPanelsGeometry(mesh.userData.originalGeometry, mesh.name, chairTextureComplex);
+            const isWood = chairMaterial === 'wood';
+            const panelGeom = createInsetPanelsGeometry(
+              mesh.userData.originalGeometry, 
+              mesh.name, 
+              chairTextureComplex, 
+              isWood
+            );
             if (panelGeom) {
-              let finalPanelMat: THREE.Material | THREE.Material[];
-              
-              if (chairMaterial === 'wood') {
-                finalPanelMat = woodMatInstances[woodGrain];
-              } else if (chairMaterial === 'fabric') {
-                finalPanelMat = currentFabricMat;
-              } else {
-                // Titanium plates matching the multitone charcoal black look
-                finalPanelMat = [
-                  matteCharcoalMat,    // Index 0 (fallback)
-                  matteCharcoalMat,    // Index 1 (Most common Charcoal black plate)
-                  matteDarkGreyMat,    // Index 2 (Secondary dark grey)
-                  matteCharcoalMat,    // Index 3 (Consistently Charcoal black plate to match original)
-                  matteDarkGreyMat,    // Index 4 (Consistently zinc grey plate)
-                  matteCharcoalMat     // Index 5 (Consistently Charcoal black plate)
-                ];
-              }
+              const finalPanelMat = isWood 
+                ? woodMatInstances[woodGrain || 'walnut'] 
+                : currentFabricMat;
               
               currentPanel = new THREE.Mesh(panelGeom, finalPanelMat);
               currentPanel.name = 'mesh_panel_overlay';
@@ -1172,7 +1766,7 @@ export function Chair3D({
         }
       }
     });
-  }, [clonedScene, chairMaterial, woodGrain, chairBackrestAngle, color, progress]);
+  }, [clonedScene, chairMaterial, woodGrain, chairBackrestAngle, color, progress, loadTrigger, useCustomGradient, fabricGradientStart, fabricGradientEnd, fabricGradientAngle, fabricGradientType, fabricGradientRadius]);
 
   return <primitive object={clonedScene} />;
 }

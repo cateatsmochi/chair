@@ -96,12 +96,12 @@ const TITANIUM_COLORS = [
 ];
 
 const FABRIC_BASE_COLORS = [
-  { id: 'f1', name: '极光红', eng: 'AURORA RED', color: '#ff6b6b' },
-  { id: 'f2', name: '极光绿', eng: 'AURORA GREEN', color: '#2ecc71' },
-  { id: 'f3', name: '幻影蓝', eng: 'PHANTOM BLUE', color: '#3853a4' },
-  { id: 'f4', name: '丁香紫', eng: 'LILAC PURPLE', color: '#b197fc' },
-  { id: 'f5', name: '湖水蓝', eng: 'LAKE BLUE', color: '#00ced1' },
-  { id: 'f6', name: '夜幕蓝', eng: 'NIGHT BLUE', color: '#1a1a2e' },
+  { id: 'f1', name: '极光蓝紫', eng: 'AURORA BLUE-PURPLE', color: '#5d5fdf' },
+  { id: 'f2', name: '幻影粉蓝', eng: 'PHANTOM PINK-BLUE', color: '#e8a7cb' },
+  { id: 'f3', name: '曜石深黑', eng: 'OBSIDIAN BLACK', color: '#2d2d30' },
+  { id: 'f4', name: '活力蓝黄', eng: 'VIBRANT BLUE-YELLOW', color: '#3c76f2' },
+  { id: 'f5', name: '暮色黄紫', eng: 'TWILIGHT YELLOW-PURPLE', color: '#eec13a' },
+  { id: 'f6', name: '春樱粉红', eng: 'CHERRY PINK-RED', color: '#fc678a' },
   { id: 'f7', name: '翡翠绿', eng: 'EMERALD GREEN', color: '#155e54' },
   { id: 'f8', name: '暖杏粉', eng: 'ALMOND PINK', color: '#ffb3ba' },
   { id: 'f9', name: '魅惑红', eng: 'CHARM RED', color: '#fc427b' },
@@ -616,6 +616,11 @@ export default function App() {
       if (validated.frameThickness < validated.legTopSize) {
         validated.frameThickness = validated.legTopSize;
       }
+    }
+
+    // 5. Delete armrests if selected chair material is wood or fabric
+    if (validated.chairMaterial === 'wood' || validated.chairMaterial === 'fabric') {
+      validated.chairHasArmrest = false;
     }
 
     return validated;
@@ -1609,7 +1614,7 @@ export default function App() {
                       updateParam('chairMaterial', 'fabric');
                       const isFabricColor = FABRIC_COLORS.some(fc => fc.color.toLowerCase() === (config.color || '').toLowerCase());
                       if (!isFabricColor) {
-                        updateParam('color', '#b197fc'); // Default to丁香紫
+                        updateParam('color', '#5d5fdf'); // Default to 极光蓝紫
                       }
                     }} 
                     isMobile={isMobile} 
@@ -1999,9 +2004,9 @@ export default function App() {
                       <span className="text-[9px] text-gray-400 font-mono uppercase">12 STYLES</span>
                     </div>
                     
-                    <div className="grid grid-cols-6 gap-1 md:gap-1.5">
+                    <div className="grid grid-cols-4 gap-1 md:gap-1.5">
                       {FABRIC_COLORS.map((item) => {
-                        const isActive = config.color && config.color.toLowerCase() === item.color.toLowerCase();
+                        const isActive = !config.useCustomGradient && config.color && config.color.toLowerCase() === item.color.toLowerCase();
 
                         return (
                           <button
@@ -2010,6 +2015,9 @@ export default function App() {
                             onClick={() => {
                               pushToHistory(config);
                               updateParam('color', item.color);
+                              if (config.useCustomGradient) {
+                                updateParam('useCustomGradient', false);
+                              }
                             }}
                             className={cn(
                               "group p-0.5 md:p-1 flex flex-col gap-1 transition-all active:scale-98 text-left border relative min-w-0 rounded-none",
@@ -2019,7 +2027,7 @@ export default function App() {
                             )}
                           >
                             <div 
-                              className="w-full h-6 md:h-8 relative overflow-hidden ring-1 ring-black/10 flex items-center justify-center"
+                              className="w-full h-8 md:h-9 relative overflow-hidden ring-1 ring-black/10 flex items-center justify-center"
                               style={{ background: item.bgStyle || item.color }}
                             >
                               {/* Realistic physical glossy bevel overlays */}
@@ -2035,11 +2043,11 @@ export default function App() {
                             </div>
 
                             <div className="px-0.5 min-w-0">
-                              <div className="text-[7.5px] md:text-[8.5px] font-black leading-tight tracking-tight uppercase truncate">
+                              <div className="text-[8px] md:text-[9.5px] font-black leading-tight tracking-tight uppercase whitespace-nowrap overflow-ellipsis">
                                 {item.name}
                               </div>
                               <div className={cn(
-                                "text-[5.5px] md:text-[6.5px] font-mono leading-none tracking-tight mt-0.5 truncate uppercase",
+                                "text-[6px] md:text-[7px] font-mono leading-none tracking-tight mt-0.5 whitespace-nowrap uppercase text-zinc-500",
                                 isActive ? "text-zinc-400" : "text-zinc-500"
                               )}>
                                 {item.eng}
@@ -2048,6 +2056,186 @@ export default function App() {
                           </button>
                         );
                       })}
+                    </div>
+
+                    {/* 自定义渐变色功能区块 */}
+                    <div className="mt-4 p-2.5 border border-zinc-200 bg-zinc-50 space-y-3.5 rounded-none">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="font-sans text-[10px] font-black uppercase text-black">自定义渐变 / CUSTOM GRADIENT</span>
+                          <span className="text-[7px] text-zinc-400 font-mono uppercase">PATH & COLORS CUSTOMIZATION</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            pushToHistory(config);
+                            updateParam('useCustomGradient', !config.useCustomGradient);
+                          }}
+                          className={cn(
+                            "px-2 py-0.5 font-mono text-[9px] font-black tracking-tight rounded-none transition-colors",
+                            config.useCustomGradient 
+                              ? "bg-black text-white border border-black shadow-[1px_1px_0px_rgba(0,0,0,0.2)]" 
+                              : "bg-white text-zinc-500 border border-zinc-250 hover:border-black shadow-[0.5px_0.5px_0px_rgba(0,0,0,0.05)]"
+                          )}
+                        >
+                          {config.useCustomGradient ? 'ON' : 'OFF'}
+                        </button>
+                      </div>
+
+                      {config.useCustomGradient && (
+                        <div className="space-y-3 pt-0.5">
+                          {/* 渐变类型选择 / GRADIENT TYPE */}
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-zinc-500 font-bold uppercase block">
+                              渐变模式 / GRADIENT MODE
+                            </span>
+                            <div className="grid grid-cols-2 gap-1 bg-white border border-zinc-200 p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  pushToHistory(config);
+                                  updateParam('fabricGradientType', 'linear');
+                                }}
+                                className={cn(
+                                  "py-1 font-mono text-[9px] font-black tracking-tight rounded-none transition-colors uppercase text-center",
+                                  (config.fabricGradientType ?? 'linear') === 'linear'
+                                    ? "bg-black text-white"
+                                    : "bg-transparent text-zinc-400 hover:text-black hover:bg-zinc-100"
+                                )}
+                              >
+                                线性 / LINEAR
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  pushToHistory(config);
+                                  updateParam('fabricGradientType', 'radial');
+                                }}
+                                className={cn(
+                                  "py-1 font-mono text-[9px] font-black tracking-tight rounded-none transition-colors uppercase text-center",
+                                  config.fabricGradientType === 'radial'
+                                    ? "bg-black text-white"
+                                    : "bg-transparent text-zinc-400 hover:text-black hover:bg-zinc-100"
+                                )}
+                              >
+                                径向 / RADIAL
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 渐变流线型视觉预览条 */}
+                          <div className="space-y-1">
+                            <span className="text-[7px] text-zinc-400 font-mono uppercase block">视觉预览 / DYNAMIC PREVIEW</span>
+                            <div 
+                              className="w-full h-4 ring-1 ring-black/10 relative overflow-hidden"
+                              style={{ 
+                                background: (config.fabricGradientType ?? 'linear') === 'radial'
+                                  ? `radial-gradient(circle, ${config.fabricGradientStart ?? '#5d5fdf'}, ${config.fabricGradientEnd ?? '#fc678a'})`
+                                  : `linear-gradient(${config.fabricGradientAngle ?? 135}deg, ${config.fabricGradientStart ?? '#5d5fdf'}, ${config.fabricGradientEnd ?? '#fc678a'})`
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/10 pointer-events-none" />
+                            </div>
+                          </div>
+
+                          {/* 双重色彩选择面板 */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[8px] text-zinc-500 font-bold block uppercase">
+                                起始色彩 / START COLOR
+                              </label>
+                              <div className="flex items-center gap-1.5 bg-white border border-zinc-200 p-1">
+                                <input 
+                                  type="color" 
+                                  value={config.fabricGradientStart ?? '#5d5fdf'}
+                                  onChange={(e) => {
+                                    pushToHistory(config);
+                                    updateParam('fabricGradientStart', e.target.value);
+                                  }}
+                                  className="w-5 h-5 cursor-pointer border-0 p-0 m-0 bg-transparent"
+                                />
+                                <span className="font-mono text-[9px] text-zinc-650 uppercase font-bold">
+                                  {config.fabricGradientStart ?? '#5d5fdf'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[8px] text-zinc-500 font-bold block uppercase">
+                                终止色彩 / END COLOR
+                              </label>
+                              <div className="flex items-center gap-1.5 bg-white border border-zinc-200 p-1">
+                                <input 
+                                  type="color" 
+                                  value={config.fabricGradientEnd ?? '#fc678a'}
+                                  onChange={(e) => {
+                                    pushToHistory(config);
+                                    updateParam('fabricGradientEnd', e.target.value);
+                                  }}
+                                  className="w-5 h-5 cursor-pointer border-0 p-0 m-0 bg-transparent"
+                                />
+                                <span className="font-mono text-[9px] text-zinc-650 uppercase font-bold">
+                                  {config.fabricGradientEnd ?? '#fc678a'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 路径角度调节滑杆 */}
+                          {(config.fabricGradientType ?? 'linear') === 'linear' && (
+                            <div className="space-y-1.5 pb-0.5">
+                              <div className="flex justify-between items-center">
+                                <label className="text-[8px] text-zinc-500 font-bold uppercase block">
+                                  渐变路径角度 / GRADIENT ANGLE
+                                </label>
+                                <span className="font-mono text-[9px] text-black font-black">
+                                  {config.fabricGradientAngle ?? 135}°
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 font-mono">
+                                <input 
+                                  type="range" 
+                                  min="0" 
+                                  max="360"
+                                  value={config.fabricGradientAngle ?? 135}
+                                  onChange={(e) => {
+                                    pushToHistory(config);
+                                    updateParam('fabricGradientAngle', parseInt(e.target.value, 10));
+                                  }}
+                                  className="flex-1 accent-black h-1 rounded-none border-stone-200 cursor-pointer"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 径向渐变半径调节滑杆 */}
+                          {(config.fabricGradientType ?? 'linear') === 'radial' && (
+                            <div className="space-y-1.5 pb-0.5">
+                              <div className="flex justify-between items-center">
+                                <label className="text-[8px] text-zinc-500 font-bold uppercase block">
+                                  渐变范围大小 / GRADIENT RADIUS
+                                </label>
+                                <span className="font-mono text-[9px] text-black font-black">
+                                  {config.fabricGradientRadius ?? 300} px
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 font-mono">
+                                <input 
+                                  type="range" 
+                                  min="50" 
+                                  max="500"
+                                  value={config.fabricGradientRadius ?? 300}
+                                  onChange={(e) => {
+                                    pushToHistory(config);
+                                    updateParam('fabricGradientRadius', parseInt(e.target.value, 10));
+                                  }}
+                                  className="flex-1 accent-black h-1 rounded-none border-stone-200 cursor-pointer"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -2069,19 +2257,19 @@ export default function App() {
                         },
                         {
                           id: 'cherry',
-                          name: '樱桃木',
-                          fullName: '科技樱桃木',
-                          eng: 'CHERRY',
-                          bgGrad: 'linear-gradient(135deg, #aa5c3c 0%, #8c4323 50%, #6e2b10 100%)',
-                          stripeColor: '#3c1405'
+                          name: '灰褐木',
+                          fullName: '科技灰褐木',
+                          eng: 'TAUPE OAK',
+                          bgGrad: 'linear-gradient(135deg, #a49182 0%, #8b796a 50%, #6f5f52 100%)',
+                          stripeColor: '#473c33'
                         },
                         {
                           id: 'ash',
-                          name: '白蜡木',
-                          fullName: '科技白蜡木',
-                          eng: 'ASH',
-                          bgGrad: 'linear-gradient(135deg, #eedbc8 0%, #d3bda9 50%, #bfa58f 100%)',
-                          stripeColor: '#64503c'
+                          name: '米白木',
+                          fullName: '科技米白木',
+                          eng: 'CREAM SILK',
+                          bgGrad: 'linear-gradient(135deg, #f5efe4 0%, #e7dac2 50%, #d4c2a4 100%)',
+                          stripeColor: '#8a7c64'
                         },
                         {
                           id: 'oak',
@@ -2150,50 +2338,52 @@ export default function App() {
                 {/* 2. Common Chair Adjustments */}
 
                 {/* 扶手选项 */}
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-1.5 px-1">
-                    <span className="text-[10px] md:text-xs font-black tracking-wider uppercase text-zinc-900 flex items-center gap-1.5">
-                      配置扶手 ARMRESTS
-                    </span>
-                    <span className="text-[8px] md:text-[9px] font-mono text-zinc-400 font-bold uppercase">
-                      {config.chairHasArmrest ? "ADDED" : "NONE"}
-                    </span>
+                {config.chairMaterial !== 'wood' && config.chairMaterial !== 'fabric' && (
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1.5 px-1">
+                      <span className="text-[10px] md:text-xs font-black tracking-wider uppercase text-zinc-900 flex items-center gap-1.5">
+                        配置扶手 ARMRESTS
+                      </span>
+                      <span className="text-[8px] md:text-[9px] font-mono text-zinc-400 font-bold uppercase">
+                        {config.chairHasArmrest ? "ADDED" : "NONE"}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          pushToHistory(config);
+                          updateParam('chairHasArmrest', false);
+                        }}
+                        className={cn(
+                          "py-1.5 md:py-2 px-3 text-[10px] md:text-xs font-black transition-all active:scale-98 border relative flex items-center justify-center gap-2",
+                          !config.chairHasArmrest
+                            ? "bg-black text-white border-black shadow-[2px_2px_0px_rgba(0,0,0,0.25)] scale-[1.02] z-10"
+                            : "bg-white text-zinc-900 border-zinc-250 hover:border-black shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
+                        )}
+                      >
+                        <span>无扶手 (No Armrests)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          pushToHistory(config);
+                          updateParam('chairHasArmrest', true);
+                        }}
+                        className={cn(
+                          "py-1.5 md:py-2 px-3 text-[10px] md:text-xs font-black transition-all active:scale-98 border relative flex items-center justify-center gap-2",
+                          config.chairHasArmrest
+                            ? "bg-black text-white border-black shadow-[2px_2px_0px_rgba(0,0,0,0.25)] scale-[1.02] z-10"
+                            : "bg-white text-zinc-900 border-zinc-250 hover:border-black shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
+                        )}
+                      >
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                        <span>增加扶手 (Add Armrests)</span>
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        pushToHistory(config);
-                        updateParam('chairHasArmrest', false);
-                      }}
-                      className={cn(
-                        "py-1.5 md:py-2 px-3 text-[10px] md:text-xs font-black transition-all active:scale-98 border relative flex items-center justify-center gap-2",
-                        !config.chairHasArmrest
-                          ? "bg-black text-white border-black shadow-[2px_2px_0px_rgba(0,0,0,0.25)] scale-[1.02] z-10"
-                          : "bg-white text-zinc-900 border-zinc-250 hover:border-black shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
-                      )}
-                    >
-                      <span>无扶手 (No Armrests)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        pushToHistory(config);
-                        updateParam('chairHasArmrest', true);
-                      }}
-                      className={cn(
-                        "py-1.5 md:py-2 px-3 text-[10px] md:text-xs font-black transition-all active:scale-98 border relative flex items-center justify-center gap-2",
-                        config.chairHasArmrest
-                          ? "bg-black text-white border-black shadow-[2px_2px_0px_rgba(0,0,0,0.25)] scale-[1.02] z-10"
-                          : "bg-white text-zinc-900 border-zinc-250 hover:border-black shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
-                      )}
-                    >
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                      <span>增加扶手 (Add Armrests)</span>
-                    </button>
-                  </div>
-                </div>
+                )}
               </>
           </div>
           <div className={cn("mt-auto relative", isMobile ? "space-y-0" : "space-y-2")}>

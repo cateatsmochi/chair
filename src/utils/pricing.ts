@@ -18,6 +18,11 @@ export const calculateSingleChairPrice = (config: TableConfig) => {
     price += 2000;
   }
 
+  // 自定义渐变+2000
+  if (mat === 'fabric' && config.useCustomGradient) {
+    price += 2000;
+  }
+
   // 换颜色（仅钛合金）+1000
   if (mat === 'titanium') {
     const isOriginalColor = !config.color || config.color === '#original' || config.color === 'original' || config.color === '#ffffff';

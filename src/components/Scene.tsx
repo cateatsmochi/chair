@@ -161,8 +161,8 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
       <Suspense fallback={null}>
         <PerspectiveCamera 
           makeDefault 
-          position={isMobile ? [2.0, 1.4, 2.0] : [2.5, 1.8, 2.5]} 
-          fov={isMobile ? 35 : 40} 
+          position={isMobile ? [1.6, 1.3, 2.4] : [1.5, 1.25, 2.35]} 
+          fov={isMobile ? 37 : 35} 
         />
         <OrbitControls 
           makeDefault 
@@ -185,6 +185,12 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
                 chairHasArmrest={config.chairHasArmrest}
                 color={config.color}
                 progress={progress}
+                fabricGradientStart={config.fabricGradientStart}
+                fabricGradientEnd={config.fabricGradientEnd}
+                fabricGradientAngle={config.fabricGradientAngle}
+                useCustomGradient={config.useCustomGradient}
+                fabricGradientType={config.fabricGradientType}
+                fabricGradientRadius={config.fabricGradientRadius}
               />
             </group>
           )}
@@ -198,18 +204,6 @@ export const Scene = forwardRef<SceneHandle, SceneProps>(({ config, isMobile, pr
           scale={15} 
           blur={1.8} 
           far={0.8} 
-        />
-
-        <Grid 
-          name="main-grid"
-          infiniteGrid 
-          fadeDistance={20} 
-          fadeStrength={5} 
-          cellSize={0.5} 
-          sectionSize={2.5} 
-          sectionColor="#4d4d4d" 
-          cellColor="#666666" 
-          position={[0, -0.001, 0]}
         />
         
         <ambientLight intensity={0.45} />

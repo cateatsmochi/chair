@@ -1,12 +1,17 @@
 import fetch from 'node-fetch';
 
 async function main() {
-  for (let num of [1, 2, 3, 7]) {
-    console.log(`\n=================== MODEL ${num} ===================`);
-    const url = `https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/model${num}-.glb`;
+  const urlMap = {
+    'LANZI': 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/lanzi1.glb',
+    'PINK_BLUE': 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/%E7%B2%89%E8%93%9D2.glb',
+    'MODEL1': 'https://raw.githubusercontent.com/cateatsmochi/blender-model/refs/heads/main/model1-.glb'
+  };
+
+  for (let [name, url] of Object.entries(urlMap)) {
+    console.log(`\n=================== ${name} ===================`);
     const res = await fetch(url);
     if (!res.ok) {
-      console.log(`Failed to fetch model ${num}`);
+      console.log(`Failed to fetch ${name}`);
       continue;
     }
     const buffer = await res.arrayBuffer();

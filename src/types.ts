@@ -22,6 +22,12 @@ export interface TableConfig {
   chairBackrestAngle?: number;
   chairHasArmrest?: boolean;
   showTable?: boolean;
+  fabricGradientStart?: string;
+  fabricGradientEnd?: string;
+  fabricGradientAngle?: number;
+  useCustomGradient?: boolean;
+  fabricGradientType?: 'linear' | 'radial';
+  fabricGradientRadius?: number;
 }
 
 export const DEFAULT_CONFIG: TableConfig = {
@@ -44,5 +50,11 @@ export const DEFAULT_CONFIG: TableConfig = {
   woodGrain: 'walnut',
   chairBackrestAngle: 0,
   chairHasArmrest: false,
-  showTable: false
+  showTable: false,
+  fabricGradientStart: '#5d5fdf',
+  fabricGradientEnd: '#fc678a',
+  fabricGradientAngle: 135,
+  useCustomGradient: false,
+  fabricGradientType: 'linear',
+  fabricGradientRadius: 300
 };

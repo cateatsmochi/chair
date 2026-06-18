@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion } from 'motion/react';
 import { Compass, Sparkles, ChevronRight, ArrowLeft, Package, Eye, Box } from 'lucide-react';
 import { TableConfig } from '../types';
-import { ModelPreviewModal } from './ModelPreviewModal';
+import { ModelPreviewModal, IsolatedChair } from './ModelPreviewModal';
+import { Canvas, useThree } from '@react-three/fiber';
+import { PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 // @ts-ignore
 import chairsGalleryImage from '../assets/images/chairs_gallery_biennale_1780976866968.png';
 // @ts-ignore
@@ -32,22 +34,83 @@ const chairImageMap: Record<string, string> = {
   'CY-A7': chairCyA7,
 };
 
+// Global cache for transparent, retina-HD front-view screenshots of each 3D model
+const capturedImagesCache: Record<string, string> = {};
+
+// Helper camera controller to perfectly frame each preview card at straight front-view
+function CameraController() {
+  const { camera } = useThree();
+  useEffect(() => {
+    // Elegant elevated straight-front angle to showcase seat surface and depth, zoomed in closer
+    camera.position.set(0, 0.92, 1.48);
+    camera.lookAt(0, 0.38, 0);
+  }, [camera]);
+  return null;
+}
+
+// Sub-component inside dynamic R3F offscreen capture Canvas
+interface CanvasCapturerProps {
+  chairId: string;
+  onCapture: (dataUrl: string) => void;
+}
+
+function CanvasCapturer({ chairId, onCapture }: CanvasCapturerProps) {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    let active = true;
+    let frameId: number;
+    let count = 0;
+
+    const doCapture = () => {
+      if (!active) return;
+      count++;
+      // Wait exactly 18 frames to let the model load and full lighting/subdivisions stabilize nicely
+      if (count > 18) {
+        try {
+          const dataUrl = gl.domElement.toDataURL('image/png');
+          if (dataUrl && dataUrl.length > 500) {
+            onCapture(dataUrl);
+            return;
+          }
+        } catch (e) {
+          console.warn(`Canvas capturer error for ${chairId}:`, e);
+        }
+      }
+      frameId = requestAnimationFrame(doCapture);
+    };
+
+    frameId = requestAnimationFrame(doCapture);
+    return () => {
+      active = false;
+      cancelAnimationFrame(frameId);
+    };
+  }, [gl, chairId, onCapture]);
+
+  return null;
+}
+
 interface ChairCropperProps {
   chairId: string;
   className?: string;
 }
 
 export function ChairCropper({ chairId, className = '' }: ChairCropperProps) {
-  const imgSrc = chairImageMap[chairId];
+  const imgSrc = capturedImagesCache[chairId] || chairImageMap[chairId];
 
   return (
-    <div className={`relative overflow-hidden w-full h-full bg-white select-none flex items-center justify-center p-2 sm:p-3 ${className}`}>
+    <div className={`relative overflow-hidden w-full h-full bg-[radial-gradient(circle_at_center,_#ffffff_40%,_#f2f2f2_100%)] select-none flex items-center justify-center p-3 md:p-4 ${className}`}>
       <img
         src={imgSrc}
         alt={chairId}
         referrerPolicy="no-referrer"
-        className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-[1.05]"
+        className="max-w-full max-h-full object-contain transition-all duration-500 filter contrast-[1.04] saturate-[1.01] brightness-[1.01] drop-shadow-[0_12px_24px_rgba(0,0,0,0.06)] group-hover/image:scale-[1.08]"
+        style={{
+          imageRendering: 'high-quality' as any,
+        }}
       />
+      {/* Exquisite micro-vignette inner shadow for lighting depth */}
+      <div className="absolute inset-0 pointer-events-none border border-zinc-900/5 shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]" />
     </div>
   );
 }
@@ -67,10 +130,10 @@ export function WelcomeScreen({ onEnterCustomizer, onEnterReadyMade }: WelcomeSc
       <header className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 md:pt-10 flex justify-between items-center z-10 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-none border-2 border-[#111111] flex items-center justify-center bg-transparent">
-            <span className="font-sans font-black text-[10px] sm:text-xs tracking-tighter">M</span>
+            <span className="font-sans font-black text-[10px] sm:text-xs tracking-tighter">N</span>
           </div>
           <div>
-            <span className="font-sans font-black text-[10px] sm:text-xs md:text-sm tracking-widest block uppercase text-zinc-900 leading-none">MODULAR STUDIO</span>
+            <span className="font-sans font-black text-[10px] sm:text-xs md:text-sm tracking-widest block uppercase text-zinc-900 leading-none">NONG STUDIO</span>
             <span className="text-[6.5px] sm:text-[7.5px] text-zinc-400 block uppercase tracking-wider mt-0.5 leading-none">BESPOKE ATELIER / v1.0.4r</span>
           </div>
         </div>
@@ -95,9 +158,14 @@ export function WelcomeScreen({ onEnterCustomizer, onEnterReadyMade }: WelcomeSc
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 }}
-            className="font-sans font-extrabold text-xl sm:text-2xl md:text-5xl lg:text-6xl tracking-tight leading-[1.1] text-zinc-900 animate-fade-in"
+            className="flex flex-col gap-1 sm:gap-2 animate-fade-in"
           >
-            Bespoke Geometry.<br className="hidden sm:inline" /> Engineered for Life.
+            <span className="font-mono font-bold text-3xl sm:text-4xl md:text-6xl lg:text-7xl tracking-tighter text-zinc-950 leading-[0.95] block">
+              EndlessForm<sup className="text-[0.4em] align-super font-sans font-light -ml-0.5 tracking-normal select-none text-zinc-400">®</sup>
+            </span>
+            <span className="font-sans font-medium text-sm sm:text-base md:text-xl lg:text-2xl tracking-[0.25em] text-zinc-400 uppercase block pl-0.5">
+              无尽之形
+            </span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -223,9 +291,9 @@ export interface Masterpiece {
 export const CURATED_MASTERPIECES: Masterpiece[] = [
   {
     id: 'CY-A1',
-    name: 'CY A1 角撑折面椅搭配组合',
-    enName: 'CY A1 Angle-Spine Facet Suite',
-    desc: '高质感深筒包裹式座舱配椅，结合后置三角力道支撑翼肋。搭配倾角棱面悬浮玻璃底座，是雕塑感与后现代重工业刚性几何美学的极致碰撞。',
+    name: 'CY A1',
+    enName: 'CY A1 Detail-Shed Project',
+    desc: '「折翼之诗」—— 极简重力与悬浮美学的微缩建构。冷冽的抛光精钢骨架勾勒出后现代折面座舱，与清透玻璃案几如冰川交融，于静止中张显刚性几何的雕塑力量。',
     enDesc: 'Deep wrap cockpit seating with post-modern mirrored floating elements. A sculpture of structural deflection.',
     image: 'CY-A1',
     priceRange: '¥13,200 起',
@@ -250,9 +318,9 @@ export const CURATED_MASTERPIECES: Masterpiece[] = [
   },
   {
     id: 'CY-A2',
-    name: 'CY A2 金刚双脊椅搭配组合',
-    enName: 'CY A2 Wishbone Diamond Suite',
-    desc: '纤细收腰钻石切面大靠背与双渐缩翼形后脊，宛如双叉骨般将力量传导。搭配熏黑天然实木橡木瓦板桌，刚健挺拔，极致雅致。',
+    name: 'CY A2',
+    enName: 'CY A2 Organic Contrast',
+    desc: '「风骨野奢」—— 双脊羽翼在松烟与炭黑中挺立。温润的天然橡木经烈火微炙，沉淀出大地的脉络，与精细冷轧重锤折面完美咬合，凝练出侘寂而又傲然的野奢张力。',
     enDesc: 'Slender hourglass wishbone framework balanced with heavily roasted natural organic oak slab table overlays.',
     image: 'CY-A2',
     priceRange: '¥10,000 起',
@@ -277,9 +345,9 @@ export const CURATED_MASTERPIECES: Masterpiece[] = [
   },
   {
     id: 'CY-A3',
-    name: 'CY A3 横刃宽座尊皇搭配组合',
-    enName: 'CY A3 Horizontal-Slice Sovereign Suite',
-    desc: '极致宽奢的低趴大横背，水平分段分节冷轧折刀钢板设计。在提供绝佳腰部释压的同时，搭配卡拉拉白理石，尽显永恒静穆与高傲姿态。',
+    name: 'CY A3',
+    enName: 'CY A3 Imperial Balance',
+    desc: '「静穆主权」—— 宽奢的低趴横刃背托，赋予空间帝王般的静穆。历经时光淘洗的卡拉拉白大理石，流淌着永恒的水墨诗意，于高傲的黑碳磨砂骨架之上，筑起尊皇的起居秩序。',
     enDesc: 'Low-slung sliced steel plate detailing sitting robustly alongside premium low-leak Carrara white slabs.',
     image: 'CY-A3',
     priceRange: '¥26,380 起',
@@ -304,9 +372,9 @@ export const CURATED_MASTERPIECES: Masterpiece[] = [
   },
   {
     id: 'CY-A4',
-    name: 'CY A4 刺冠重锤王座搭配组合',
-    enName: 'CY A4 Gothic Spiked Throne Suite',
-    desc: '哥特式尖耸刺冠双峰，带甲重锤护板，犹如冷冽硬核武士尊荣王座。搭配重工业原木橡木大厚板，流露强悍的抗疲劳美学肌理。',
+    name: 'CY A4',
+    enName: 'CY A4 Gothic Heavy Core',
+    desc: '「尖锋意志」—— 哥特刺冠双峰与重装武士胸甲的冷峻对白。粗削厚切的大地烟熏原木，保留了原始生长的粗重呼吸，在锋利的工业硬汉线条中，散发出近乎信仰般的沉重张力。',
     enDesc: 'Gothic protective plate peaks paired with textured wide brutalist oak platforms for heavy-gravity spaces.',
     image: 'CY-A4',
     priceRange: '¥15,600 起',
@@ -331,9 +399,9 @@ export const CURATED_MASTERPIECES: Masterpiece[] = [
   },
   {
     id: 'CY-A5',
-    name: 'CY A5 穹网蜂巢轻奢搭配组合',
-    enName: 'CY A5 Hex-Honeycomb Dome Suite',
-    desc: '圆拱形激光剔透镂空三角与蜂巢晶格。全反射高光镀铬，折射玲珑斑驳，搭配超薄超清晰透光超白防爆玻璃桌，奢华而不失轻灵。',
+    name: 'CY A5',
+    enName: 'CY A5 Crystalline Structure',
+    desc: '「光影晨曦」—— 激光微雕出的穹顶蜂巢，似清晨覆着薄霜。高光反射的镜面铬层随光影游移，将斑驳的几何光斑洒在超白悬浮玻璃上，灵动轻盈，空灵如诗。',
     enDesc: 'Laser-cut triangular mesh web reflecting dynamic ambient beams. Paired with ultra-thin glass configurations.',
     image: 'CY-A5',
     priceRange: '¥22,180 起',
@@ -358,9 +426,9 @@ export const CURATED_MASTERPIECES: Masterpiece[] = [
   },
   {
     id: 'CY-A6',
-    name: 'CY A6 重装沙漏翼展搭配组合',
-    enName: 'CY A6 Hourglass Aero Suite',
-    desc: '沙漏开孔型外骨骼靠背。肩膀部两侧延展出强力羽翼，安全怀抱，搭配超长行政级熏黑实木桌面，彰显非凡商业与私人领袖气度。',
+    name: 'CY A6',
+    enName: 'CY A6 Hourglass Wing',
+    desc: '「羽翼方舟」—— 延展的沙漏机翼外骨骼，构筑出安全的精神堡垒。超长尺度的深黑色烟熏实木几案宛如远航的巨轮首尾，自如掌控着宏大的商业意象与领袖格局。',
     enDesc: 'Hourglass double-trapezoid aero skeleton matched with heavy-overhang expansive conference oak designs.',
     image: 'CY-A6',
     priceRange: '¥22,100 起',
@@ -385,9 +453,9 @@ export const CURATED_MASTERPIECES: Masterpiece[] = [
   },
   {
     id: 'CY-A7',
-    name: 'CY A7 猫耳晶格帝王搭配组合',
-    enName: 'CY A7 Cat-Ear Lattice Suite',
-    desc: '高耸的对称猫耳尖，肩胸空气动力学大幅度掏空，底口咬合精钢底轴。狂野桀骜，搭配意大利高白大理石板配至臻钢架，王者格调。',
+    name: 'CY A7',
+    enName: 'CY A7 Feline Symmetry',
+    desc: '「狂野图腾」—— 仿生机械猫耳与中空空气动力学掏空。高反光微晶镜面钢与雪花白哑光大理石傲然交相辉映，打破陈规，释放桀骜不驯的未来先锋张力。',
     enDesc: 'Striking modular feline ears with hollow air-dam vents paired with pristine marble surfaces.',
     image: 'CY-A7',
     priceRange: '¥23,700 起',
@@ -431,6 +499,24 @@ const CHAIR_DIMS_SPECS: Record<string, { size: string; weight: string }> = {
 export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGalleryProps) {
   const [previewMaster, setPreviewMaster] = useState<Masterpiece | null>(null);
 
+  // Setup list of models for flat-front perspective cover captures
+  const AJ_CHAIR_IDS = React.useMemo(() => ['CY-A1', 'CY-A2', 'CY-A3', 'CY-A4', 'CY-A5', 'CY-A6', 'CY-A7'], []);
+  const [currentCaptureId, setCurrentCaptureId] = useState<string | null>(() => {
+    // Determine the first model that does not have its transparent HD screen capture cached
+    for (const id of AJ_CHAIR_IDS) {
+      if (!capturedImagesCache[id]) return id;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    // Force clear the cache on mount to ensure the freshly adjusted higher-angle perspective is captured correctly
+    for (const id of AJ_CHAIR_IDS) {
+      delete capturedImagesCache[id];
+    }
+    setCurrentCaptureId('CY-A1');
+  }, [AJ_CHAIR_IDS]);
+
   return (
     <div className="absolute inset-0 bg-[#f9f9f9] text-[#111111] select-none flex flex-col font-mono overflow-y-auto custom-scrollbar">
       {/* Precision grid pattern layout */}
@@ -467,12 +553,13 @@ export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGa
           </div>
 
           {/* Overview Image (总览图) */}
-          <div className="bg-white border border-zinc-300 p-2 sm:p-3 shadow-[1px_1px_0px_rgba(0,0,0,0.05)]">
+          <div className="bg-white border border-zinc-900/15 p-2 sm:p-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05),_0_8px_10px_-6px_rgba(0,0,0,0.05)] overflow-hidden rounded-sm transition-all duration-300 hover:border-zinc-900/35">
             <img 
               src={regeneratedGalleryImage} 
               alt="Chairs Overview" 
               referrerPolicy="no-referrer"
-              className="w-full h-auto object-contain"
+              className="w-full h-auto object-contain filter contrast-[1.06] saturate-[1.03] transition-transform duration-700 hover:scale-[1.015]"
+              style={{ imageRendering: 'high-quality' as any }}
             />
           </div>
         </div>
@@ -486,7 +573,7 @@ export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGa
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.55 }}
-                className="bg-white border-2 border-zinc-900/10 p-5 md:p-6 flex flex-col justify-between hover:border-zinc-900 shadow-[3px_3px_0px_rgba(0,0,0,0.03)] hover:shadow-[4px_4px_0px_rgba(0,0,0,0.1)] transition-all relative group"
+                className="bg-white border-2 border-zinc-900/10 p-5 md:p-6 flex flex-col justify-between hover:border-zinc-900 shadow-[2px_12px_28px_rgba(0,0,0,0.03)] hover:shadow-[4px_16px_36px_rgba(0,0,0,0.08)] transition-all relative group"
               >
 
 
@@ -501,13 +588,18 @@ export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGa
                       className="w-full h-full"
                     />
                     
-                    {/* Exquisite hover mask indicating 3D view availability */}
-                    <div className="absolute inset-0 bg-zinc-900/60 opacity-0 group-hover/image:opacity-100 transition-all duration-300 flex flex-col items-center justify-center text-white space-y-1 z-10 p-4">
-                      <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-bold text-xs mb-1">
-                        <Box size={18} className="text-white animate-pulse" />
+                    {/* Exquisite hover mask indicating 3D view availability - Premium layout spotlight */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/25 opacity-0 group-hover/image:opacity-100 transition-all duration-300 flex flex-col items-center justify-center text-white z-10 p-4">
+                      {/* Floating frosted-glass capsule */}
+                      <div className="bg-zinc-950/85 backdrop-blur-md border border-white/12 px-5 py-3.5 rounded-xl flex flex-col items-center text-center space-y-1.5 shadow-[0_15px_30px_rgba(0,0,0,0.25)] transition-transform duration-300 scale-95 group-hover/image:scale-100">
+                        <div className="w-8.5 h-8.5 rounded-full bg-white/8 border border-white/18 flex items-center justify-center">
+                          <Box size={15} className="text-white logo-spin" style={{ animation: 'spin 10s linear infinite' }} />
+                        </div>
+                        <div className="text-center font-sans">
+                          <span className="text-[10px] font-black tracking-widest text-white uppercase block">3D 交互预览</span>
+                          <span className="text-[7.5px] font-mono tracking-wider text-zinc-300 block mt-0.5">CLICK TO PREVIEW</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-sans font-black tracking-widest uppercase">3D 交互预览</span>
-                      <span className="text-[7px] font-mono tracking-wider opacity-60">CLICK TO PREVIEW</span>
                     </div>
 
                     <div className="absolute top-2 left-2 text-[6.5px] text-zinc-650 bg-white/95 px-1.5 py-0.5 border border-zinc-250 font-mono uppercase tracking-widest leading-none z-10">
@@ -517,13 +609,10 @@ export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGa
 
                   {/* Text details */}
                   <div className="space-y-1.5">
-                    <h3 className="font-sans font-black text-base md:text-lg tracking-tight text-zinc-900 group-hover:text-zinc-950 transition-colors">
+                    <h3 className="font-sans font-black text-lg md:text-xl tracking-tight text-zinc-900 group-hover:text-zinc-950 transition-colors uppercase">
                       {master.name}
                     </h3>
-                    <h4 className="text-[10px] text-zinc-400 uppercase font-black tracking-wider leading-none">
-                      {master.enName}
-                    </h4>
-                    <p className="text-[10px] text-zinc-500 leading-relaxed font-sans font-light pt-1 border-t border-zinc-150">
+                    <p className="text-[9.5px] text-zinc-500 leading-relaxed font-sans font-light pt-1.5 border-t border-zinc-150">
                       {master.desc}
                     </p>
                   </div>
@@ -571,6 +660,53 @@ export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGa
             setPreviewMaster(null);
           }}
         />
+      )}
+
+      {/* Dynamic Background Screenshot Engine: captures retina-HD transparent positives in sequence */}
+      {currentCaptureId && (
+        <div style={{ position: 'absolute', width: 512, height: 600, left: -9999, top: -9999, overflow: 'hidden', pointerEvents: 'none', visibility: 'hidden' }}>
+          <Canvas
+            shadows={false}
+            gl={{ preserveDrawingBuffer: true, alpha: true, antialias: true }}
+            dpr={2}
+          >
+            <CameraController />
+            <ambientLight intensity={0.5} />
+            <hemisphereLight intensity={0.35} color="#ffffff" groundColor="#dcdcdc" />
+            <directionalLight position={[3, 5, 4]} intensity={1.1} />
+            <directionalLight position={[-3, 4, -2]} intensity={0.5} />
+            <Environment preset="studio" environmentIntensity={0.55} />
+            
+            <Suspense fallback={null}>
+              <IsolatedChair key={currentCaptureId} chairId={currentCaptureId} />
+            </Suspense>
+
+            <ContactShadows
+              position={[0, 0, 0]}
+              opacity={0.35}
+              scale={3.5}
+              blur={2.0}
+              far={1.2}
+            />
+
+            <CanvasCapturer 
+              chairId={currentCaptureId} 
+              onCapture={(dataUrl) => {
+                capturedImagesCache[currentCaptureId] = dataUrl;
+                
+                // Advance schedule queue to next uncached chair model
+                let nextId: string | null = null;
+                for (const id of AJ_CHAIR_IDS) {
+                  if (!capturedImagesCache[id]) {
+                    nextId = id;
+                    break;
+                  }
+                }
+                setCurrentCaptureId(nextId);
+              }} 
+            />
+          </Canvas>
+        </div>
       )}
     </div>
   );

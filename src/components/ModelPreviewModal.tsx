@@ -53,7 +53,7 @@ function ModelLoader() {
 }
 
 // This nested component isolates, centers, and scales the requested chair from the multi-chair GLTF
-function IsolatedChair({ chairId }: { chairId: string }) {
+export function IsolatedChair({ chairId }: { chairId: string }) {
   // Identify index/number of the chair from its ID (e.g. "CY-A1" -> 1, "CY-A7" -> 7)
   const chairNumber = useMemo(() => {
     const num = parseInt(chairId.replace(/[^\d]/g, ''), 10);
