@@ -66,13 +66,16 @@ function GridChairCell({ chair, position, onSelect }: GridChairCellProps) {
                         mat.map = desaturateTexture(mat.map);
                     }
                     // For baked texture models: keep maps and colors intact, and apply beautiful high-contrast matte properties
-                    if (mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.75);
-                    if (mat.metalness !== undefined) mat.metalness = Math.min(mat.metalness, 0.15);
-                    if (mat.color && typeof mat.color.set === 'function') {
-                        mat.color.set('#ffffff'); // Keep original crisp texture colors untouched! (No grey tinting of the black cushions!)
+                    if (mat.map) {
+                        mat.map = desaturateTexture(mat.map);
                     }
+                    mat.roughness = 0.82;
+                    mat.metalness = 0.08;
+                    // Removed forced color reset to '#ffffff' to prevent crushing textures
                 } else if (isOriginalVeneerMaterial(mat, mesh)) {
                     // It's a veneer panel! Keep its original beautiful textured look and maps completely untouched.
+                    mat.roughness = 0.82;
+                    mat.metalness = 0.08;
                 } else {
                     // Clear mottled maps to ensure smooth pearl reflections as requested
                     mat.map = null;
@@ -86,13 +89,13 @@ function GridChairCell({ chair, position, onSelect }: GridChairCellProps) {
                         mat.metalness = 1.0;
                         mat.roughness = 0.05;
                     } else if (chair.material === 'carbon') {
-                        mat.color.set('#333333');
-                        mat.metalness = 0.88;
-                        mat.roughness = 0.55;
+                        mat.color.set('#1a1a1a'); // Darker matte black
+                        mat.metalness = 0.2;
+                        mat.roughness = 0.8;
                     } else { // Steel
                         mat.color.set('#8e9496');
-                        mat.metalness = 0.88;
-                        mat.roughness = 0.60;
+                        mat.metalness = 0.5;
+                        mat.roughness = 0.6;
                     }
                 }
                 mat.needsUpdate = true;
@@ -283,9 +286,9 @@ export function ChairShowroomModal({ onClose, onSelectChair }: ChairShowroomModa
                     target={[0, 0, 0]}
                   />
 
-                  <Environment preset="studio" environmentIntensity={0.4} />
+                  <Environment preset="studio" environmentIntensity={0.25} />
                   
-                  <ambientLight intensity={0.45} />
+                  <ambientLight intensity={0.25} />
                   <hemisphereLight intensity={0.3} color="#ffffff" groundColor="#dcdcdc" />
                   
                   <directionalLight

@@ -1,3 +1,5 @@
+import { TableConfig } from '../types';
+
 export interface ChairInfo {
   id: string;
   name: string;
@@ -10,6 +12,18 @@ export interface ChairInfo {
   svgPath: string;
   // Color presets matching material
   material: 'steel' | 'chrome' | 'carbon';
+}
+
+export interface Masterpiece {
+  id: string;
+  name: string;
+  enName: string;
+  desc: string;
+  enDesc: string;
+  image: string;
+  config: TableConfig;
+  specs: string[];
+  priceRange: string;
 }
 
 export const CHAIR_LIBRARY: ChairInfo[] = [
@@ -91,3 +105,196 @@ export const CHAIR_LIBRARY: ChairInfo[] = [
     material: 'chrome'
   }
 ];
+
+export const CURATED_MASTERPIECES: Masterpiece[] = [
+  {
+    id: 'CY-A1',
+    name: 'CY A1',
+    enName: 'CY A1 Detail-Shed Project',
+    desc: '「折翼之诗」—— 极简重力与悬浮美学的微缩建构。冷冽的抛光精钢骨架勾勒出后现代折面座舱，与清透玻璃案几如冰川交融，于静止中张显刚性几何的雕塑力量。',
+    enDesc: 'Deep wrap cockpit seating with post-modern mirrored floating elements. A sculpture of structural deflection.',
+    image: 'CY-A1',
+    priceRange: '¥13,200 起',
+    specs: ['配椅型号: CY-A1 (折面角撑)', '主椅材质: 精空镀铬镜面钢', '搭配桌型: 意式晶荧悬浮玻璃桌', '默认组合: 180x85x75cm | 4椅群'],
+    config: {
+      width: 180,
+      depth: 85,
+      height: 75,
+      legTaper: 8,
+      topThickness: 15,
+      frameDepth: 50,
+      frameInwardOffset: 100,
+      frameThickness: 80,
+      legTopSize: 70,
+      legBottomSize: 35,
+      legInnerDepth: 25,
+      material: 'glass',
+      color: '#ffffff',
+      chairId: 'CY-A1',
+      chairCount: 4
+    }
+  },
+  {
+    id: 'CY-A2',
+    name: 'CY A2',
+    enName: 'CY A2 Organic Contrast',
+    desc: '「风骨野奢」—— 双脊羽翼在松烟与炭黑中挺立。温润的天然橡木经烈火微炙，沉淀出大地的脉络，与精细冷轧重锤折面完美咬合，凝练出侘寂而又傲然的野奢张力。',
+    enDesc: 'Slender hourglass wishbone framework balanced with heavily roasted natural organic oak slab table overlays.',
+    image: 'CY-A2',
+    priceRange: '¥10,000 起',
+    specs: ['配椅型号: CY-A2 (双脊金刚)', '主椅材质: 磨砂冷轧钛素钢', '搭配桌型: 极北熏黑实木长瓦桌', '默认组合: 160x80x74cm | 2椅群'],
+    config: {
+      width: 160,
+      depth: 80,
+      height: 74,
+      legTaper: 0,
+      topThickness: 30,
+      frameDepth: 60,
+      frameInwardOffset: 120,
+      frameThickness: 90,
+      legTopSize: 80,
+      legBottomSize: 80,
+      legInnerDepth: 0,
+      material: 'oak',
+      color: '#8B5E3C',
+      chairId: 'CY-A2',
+      chairCount: 2
+    }
+  },
+  {
+    id: 'CY-A3',
+    name: 'CY A3',
+    enName: 'CY A3 Imperial Balance',
+    desc: '「静穆主权」—— 宽奢的低趴横刃背托，赋予空间帝王般的静穆。历经时光淘洗的卡拉拉白大理石，流淌着永恒的水墨诗意，于高傲的黑碳磨砂骨架之上，筑起尊皇的起居秩序。',
+    enDesc: 'Low-slung sliced steel plate detailing sitting robustly alongside premium low-leak Carrara white slabs.',
+    image: 'CY-A3',
+    priceRange: '¥26,380 起',
+    specs: ['配椅型号: CY-A3 (横刃重装)', '主椅材质: 高标黑碳素磨砂钢', '搭配桌型: 卡拉拉重晶哑光理石桌', '默认组合: 200x90x76cm | 6椅群'],
+    config: {
+      width: 200,
+      depth: 90,
+      height: 76,
+      legTaper: 0,
+      topThickness: 45,
+      frameDepth: 80,
+      frameInwardOffset: 150,
+      frameThickness: 120,
+      legTopSize: 100,
+      legBottomSize: 100,
+      legInnerDepth: 0,
+      material: 'marble',
+      color: '#ffffff',
+      chairId: 'CY-A3',
+      chairCount: 6
+    }
+  },
+  {
+    id: 'CY-A4',
+    name: 'CY A4',
+    enName: 'CY A4 Gothic Heavy Core',
+    desc: '「尖锋意志」—— 哥特刺冠双峰与重装武士胸甲的冷峻对白。粗削厚切的大地烟熏原木，保留了原始生长的粗重呼吸，在锋利的工业硬汉线条中，散发出近乎信仰般的沉重张力。',
+    enDesc: 'Gothic protective plate peaks paired with textured wide brutalist oak platforms for heavy-gravity spaces.',
+    image: 'CY-A4',
+    priceRange: '¥15,600 起',
+    specs: ['配椅型号: CY-A4 (尖锋刺冠)', '主椅材质: 硬核磨砂黑轧钢', '搭配桌型: 极重工厚切粗削烟熏桌', '默认组合: 180x85x75cm | 4椅群'],
+    config: {
+      width: 180,
+      depth: 85,
+      height: 75,
+      legTaper: 0,
+      topThickness: 25,
+      frameDepth: 55,
+      frameInwardOffset: 110,
+      frameThickness: 85,
+      legTopSize: 80,
+      legBottomSize: 80,
+      legInnerDepth: 0,
+      material: 'oak',
+      color: '#31302d',
+      chairId: 'CY-A4',
+      chairCount: 4
+    }
+  },
+  {
+    id: 'CY-A5',
+    name: 'CY A5',
+    enName: 'CY A5 Crystalline Structure',
+    desc: '「光影晨曦」—— 激光微雕出的穹顶蜂巢，似清晨覆着薄霜。高光反射的镜面铬层随光影游移，将斑驳的几何光斑洒在超白悬浮玻璃上，灵动轻盈，空灵如诗。',
+    enDesc: 'Laser-cut triangular mesh web reflecting dynamic ambient beams. Paired with ultra-thin glass configurations.',
+    image: 'CY-A5',
+    priceRange: '¥22,180 起',
+    specs: ['配椅型号: CY-A5 (穹顶蜂巢)', '主椅材质: 精空抛光亮银铬镜', '搭配桌型: 威尼斯超白防爆玻璃桌', '默认组合: 220x95x74cm | 6椅群'],
+    config: {
+      width: 220,
+      depth: 95,
+      height: 74,
+      legTaper: 10,
+      topThickness: 15,
+      frameDepth: 45,
+      frameInwardOffset: 85,
+      frameThickness: 65,
+      legTopSize: 55,
+      legBottomSize: 25,
+      legInnerDepth: 30,
+      material: 'glass',
+      color: '#e2e8f0',
+      chairId: 'CY-A5',
+      chairCount: 6
+    }
+  },
+  {
+    id: 'CY-A6',
+    name: 'CY A6',
+    enName: 'CY A6 Hourglass Wing',
+    desc: '「羽翼方舟」—— 延展的沙漏机翼外骨骼，构筑出安全的精神堡垒。超长尺度的深黑色烟熏实木几案宛如远航的巨轮首尾，自如掌控着宏大的商业意象与领袖格局。',
+    enDesc: 'Hourglass double-trapezoid negative space back with aggressive fighter-wing shoulder support.',
+    image: 'CY-A6',
+    priceRange: '¥22,100 起',
+    specs: ['配椅型号: CY-A6 (机翼外骨)', '主椅材质: 原生深灰碳素钛钢', '搭配桌型: 翼展超长行政烟熏大板', '默认组合: 240x100x76cm | 8椅群'],
+    config: {
+      width: 240,
+      depth: 100,
+      height: 76,
+      legTaper: 5,
+      topThickness: 35,
+      frameDepth: 70,
+      frameInwardOffset: 160,
+      frameThickness: 110,
+      legTopSize: 90,
+      legBottomSize: 60,
+      legInnerDepth: 15,
+      material: 'oak',
+      color: '#1a202c',
+      chairId: 'CY-A6',
+      chairCount: 8
+    }
+  },
+  {
+    id: 'CY-A7',
+    name: 'CY A7',
+    enName: 'CY A7 Feline Symmetry',
+    desc: '「狂野图腾」—— 仿生机械猫耳与中空空气动力学掏空。高反光微晶镜面钢与雪花白哑光大理石傲然交相辉映，打破陈规，释放桀骜不驯的未来先锋张力。',
+    enDesc: 'Striking modular feline ears with hollow air-dam vents paired with pristine marble surfaces.',
+    image: 'CY-A7',
+    priceRange: '¥23,700 起',
+    specs: ['配椅型号: CY-A7 (猫耳晶格)', '主椅材质: 航空微晶镀铬镜钢', '搭配桌型: 雪花白哑光大理石重桌', '默认组合: 160x85x75cm | 4椅群'],
+    config: {
+      width: 160,
+      depth: 85,
+      height: 75,
+      legTaper: 0,
+      topThickness: 40,
+      frameDepth: 65,
+      frameInwardOffset: 130,
+      frameThickness: 100,
+      legTopSize: 90,
+      legBottomSize: 90,
+      legInnerDepth: 0,
+      material: 'marble',
+      color: '#ffffff',
+      chairId: 'CY-A7',
+      chairCount: 4
+    }
+  }
+];
+
