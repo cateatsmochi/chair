@@ -155,7 +155,7 @@ export function ChairSelector({
               <span className="text-gray-400">工艺材质:</span>
               <span className="text-zinc-900 font-bold uppercase">
                 {selectedChairMaterial === 'wood' 
-                  ? '高端科技木纹 (参考图1)' 
+                  ? '科技木纹 (4种木纹可选)' 
                   : selectedChairMaterial === 'fabric' 
                   ? '极光彩虹科技布 (参考图2)' 
                   : '原厂钛合金 (初始模型)'}
@@ -206,7 +206,7 @@ export function ChairSelector({
             <div className="grid grid-cols-3 gap-1">
               {[
                 { id: 'titanium', label: '钛合金', desc: '初始模型' },
-                { id: 'wood', label: '科技木', desc: '参考图1' },
+                { id: 'wood', label: '科技木', desc: '4种纹理可选' },
                 { id: 'fabric', label: '科技布', desc: '参考图2' }
               ].map((m) => (
                 <button

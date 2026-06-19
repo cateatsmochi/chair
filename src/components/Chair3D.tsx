@@ -2,6 +2,15 @@ import { useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 
+// @ts-ignore
+import texTechWood1 from '../assets/images/科技木1.jpg';
+// @ts-ignore
+import texTechWood2 from '../assets/images/115886652锯纹类木材.jpg';
+// @ts-ignore
+import texTechWood3 from '../assets/images/115755533科定木纹木饰面.jpg';
+// @ts-ignore
+import texTechWood4 from '../assets/images/科技木4.jpg';
+
 interface Chair3DProps {
   chairId: string;
   color?: string; // Optional custom color fallback
@@ -553,10 +562,10 @@ const createWoodMaterial = (grain: 'walnut' | 'cherry' | 'ash' | 'oak' = 'walnut
 
   // Load highly realistic seamless wood texture from Unsplash global CDN
   const urlMap: Record<string, string> = {
-    walnut: 'https://images.unsplash.com/photo-1531685222403-f928502d2b30?auto=format&fit=crop&w=1024&q=80',
-    cherry: 'https://images.unsplash.com/photo-1541123437800-1bb1317badc2?auto=format&fit=crop&w=1024&q=80',
-    ash: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1024&q=80',
-    oak: 'https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=1024&q=80'
+    walnut: texTechWood1,
+    cherry: texTechWood2,
+    ash: texTechWood3,
+    oak: texTechWood4
   };
 
   const selectedUrl = urlMap[grain];
