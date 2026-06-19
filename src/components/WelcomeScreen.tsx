@@ -396,6 +396,7 @@ const CHAIR_DIMS_SPECS: Record<string, { size: string; weight: string }> = {
 };
 
 export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGalleryProps) {
+  const isDesktop = useIsDesktop();
   const [previewMaster, setPreviewMaster] = useState<Masterpiece | null>(null);
 
   // Setup list of models for flat-front perspective cover captures
@@ -562,7 +563,7 @@ export function ReadyMadeGallery({ onBackToLanding, onApplyConfig }: ReadyMadeGa
       )}
 
       {/* Dynamic Background Screenshot Engine: captures retina-HD transparent positives in sequence */}
-      {currentCaptureId && (
+      {isDesktop && currentCaptureId && (
         <div style={{ position: 'absolute', width: 512, height: 600, left: -9999, top: -9999, overflow: 'hidden', pointerEvents: 'none', visibility: 'hidden' }}>
           <Canvas
             shadows={false}
